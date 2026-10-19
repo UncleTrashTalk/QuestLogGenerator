@@ -26,6 +26,8 @@
 .chapter-name:hover{color:var(--green)}
 .chapter-row small{flex:none;margin-left:0}
 .chapter-icon-pick{flex:none}
+.quest-download{flex:none;padding:3px 4px;font-size:12px;color:#8fae75}
+.quest-download:hover{color:var(--green)}
 .chapter-edit{padding-left:2px;padding-right:2px}
 .all-chapters-button{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:5px;padding:7px 7px;border:1px solid transparent;border-radius:6px;background:transparent;color:#bac5bb;text-align:left;font-size:10px}
 .all-chapters-button small{color:#829087;font:9px var(--mono)}

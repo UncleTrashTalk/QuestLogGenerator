@@ -80,12 +80,18 @@ function renderSidebar() {
     <div class="quest-row ${quest.key === state.selected ? 'active' : ''}" data-key="${quest.key}">
       <span class="quest-icon"><span aria-hidden="true">✦</span><img src="${safe(localSprite(quest.data.icon?.item || 'minecraft:book'))}" alt="" /></span>
       <span class="quest-info"><b>${safe(quest.data.title || 'Untitled quest')}</b><small>${safe(questId(quest))}</small></span>
+      <button class="text-button quest-download" data-quest-download="${quest.key}" type="button" title="Download quest JSON" aria-label="Download ${safe(quest.data.title || quest.fileName)} as JSON">&#8595;</button>
       <span class="quest-arrow">›</span>
     </div>`).join('') || '<div class="empty-state">No quests match these filters.</div>';
 
   $$('.quest-row').forEach(row => row.onclick = () => {
     state.selected = row.dataset.key;
     renderAll();
+  });
+  $$('[data-quest-download]').forEach(button => button.onclick = event => {
+    event.stopPropagation();
+    const quest = state.quests.find(item => item.key === button.dataset.questDownload);
+    if (quest) download(`${quest.fileName || 'quest'}.json`, questOutputData(quest));
   });
   $$('.quest-icon img').forEach(image => image.onerror = () => { image.style.visibility = 'hidden'; });
 
@@ -96,6 +102,7 @@ function renderSidebar() {
       </button>
       <button class="chapter-name" data-chapter-filter="${safe(chapter.fileName)}" title="Show quests in this chapter">${safe(chapter.data.name || chapter.fileName)}</button>
       <small>${state.quests.filter(quest => quest.chapter === chapter.fileName).length}</small>
+      <button class="chapter-visibility-toggle ${chapter.data.hidden ? 'is-hidden' : ''}" data-chapter-visibility="${chapter.key}" type="button" role="switch" aria-checked="${!!chapter.data.hidden}" aria-label="${chapter.data.hidden ? 'Chapter hidden from UI' : 'Chapter visible in UI'}" title="${chapter.data.hidden ? 'Hidden from UI — click to show' : 'Visible in UI — click to hide'}"><i aria-hidden="true"></i></button>
       <button class="text-button chapter-edit" data-chapter-edit="${chapter.key}" title="Edit chapter">Edit</button>
       <button class="text-button chapter-download" data-chapter-download="${chapter.key}" title="Download chapter JSON">↓</button>
       <button class="text-button chapter-delete" data-chapter-delete="${chapter.key}" title="Remove chapter">×</button>
@@ -108,6 +115,14 @@ function renderSidebar() {
     };
   });
   $$('[data-chapter-edit]').forEach(button => button.onclick = () => editChapter(button.dataset.chapterEdit));
+  $$('[data-chapter-visibility]').forEach(button => button.onclick = event => {
+    event.stopPropagation();
+    const chapter = state.chapters.find(item => item.key === button.dataset.chapterVisibility);
+    if (!chapter) return;
+    chapter.data.hidden = !chapter.data.hidden;
+    persist();
+    renderSidebar();
+  });
   $$('[data-chapter-download]').forEach(button => button.onclick = () => {
     const chapter = state.chapters.find(item => item.key === button.dataset.chapterDownload);
     if (chapter) download(`${chapter.fileName || 'chapter'}.json`, chapter.data);
@@ -174,7 +189,10 @@ function renderEditor() {
     $('#icon').value = '';
     setIconPreview('');
     $('#chapter').innerHTML = '';
-    $('#visibility').value = 'visible';
+    $('#visibility').checked = false;
+    syncQuestVisibilityToggle(false);
+    $('#hideWhenCompleted').checked = false;
+    syncHideWhenCompletedToggle(false);
     $('#requirements').innerHTML = '';
     $('#objectives').innerHTML = '';
     $('#rewards').innerHTML = '';
@@ -208,7 +226,10 @@ function renderEditor() {
   $('#fileName').value = quest.fileName || '';
   $('#icon').value = quest.data.icon?.item || '';
   setIconPreview($('#icon').value);
-  $('#visibility').value = quest.data.hidden ? 'hidden' : 'visible';
+  $('#visibility').checked = !!quest.data.hidden;
+  syncQuestVisibilityToggle($('#visibility').checked);
+  $('#hideWhenCompleted').checked = !!quest.data.hide_when_completed;
+  syncHideWhenCompletedToggle($('#hideWhenCompleted').checked);
   $('#chapter').innerHTML = state.chapters.map(chapter =>
     `<option value="${safe(chapter.fileName)}">${safe(chapter.data.name || chapter.fileName)} (${safe(chapter.fileName)}.json)</option>`
   ).join('') + '<option value="">No chapter</option>';
@@ -224,25 +245,54 @@ function renderEditor() {
 // Show and update prerequisite quest selections.
 function renderRequirements(quest) {
   const requirements = quest.data.requirements || [];
-  $('#requirements').innerHTML = requirements.length ? requirements.map((requirement, index) => `
-    <div class="repeat-item">
-      <div class="repeat-top">
-        <span class="quest-icon">↗</span>
-        <select data-req="${index}" class="req-select">
-          ${state.quests.filter(item => item.key !== quest.key).map(item =>
-            `<option value="${safe(questId(item))}" ${questId(item) === requirement.quest ? 'selected' : ''}>${safe(item.data.title || item.fileName)} · ${safe(questId(item))}</option>`
-          ).join('')}
-          <option value="${safe(requirement.quest || '')}" ${state.quests.some(item => questId(item) === requirement.quest) ? '' : 'selected'}>External / unresolved: ${safe(requirement.quest || '')}</option>
-        </select>
-        <button class="remove-item" data-remove-req="${index}">×</button>
-      </div>
-      <small style="color:#849188">Unlocks after this quest is completed.</small>
-    </div>`).join('') : '<div class="empty-state">No prerequisites. This quest is available from the start.</div>';
+  $('#requirements').innerHTML = requirements.length ? requirements.map((requirement, index) => {
+    const availableQuests = state.quests.filter(item => item.key !== quest.key);
+    const selectedQuest = availableQuests.find(item => questId(item) === requirement.quest);
+    const selectedTitle = selectedQuest?.data.title || (selectedQuest ? selectedQuest.fileName : 'External / unresolved');
+    const selectedId = requirement.quest || '';
+    const selectedIcon = selectedQuest?.data.icon?.item || 'minecraft:book';
+    const choices = availableQuests.map(item => {
+      const id = questId(item), title = item.data.title || item.fileName;
+      const icon = localSprite(item.data.icon?.item || 'minecraft:book');
+      return `<button type="button" class="quest-option ${id === requirement.quest ? 'selected' : ''}" data-req-choice data-req-value="${safe(id)}" role="option" aria-selected="${id === requirement.quest}"><img src="${safe(icon)}" alt="" /><span><b>${safe(title)}</b><small>${safe(id)}</small></span></button>`;
+    }).join('');
+    const unknownChoice = selectedQuest ? '' : `<button type="button" class="quest-option selected" data-req-choice data-req-value="${safe(selectedId)}" role="option" aria-selected="true"><img src="${safe(localSprite('minecraft:barrier'))}" alt="" /><span><b>External / unresolved</b><small>${safe(selectedId || 'No quest ID')}</small></span></button>`;
+    return `<div class="repeat-item"><div class="repeat-top"><div class="quest-picker-control"><input type="hidden" data-req="${index}" class="req-select" value="${safe(selectedId)}" /><button type="button" class="quest-picker-trigger" aria-haspopup="listbox" aria-expanded="false"><img data-req-preview src="${safe(localSprite(selectedIcon))}" alt="" /><span class="quest-selected-label"><b>${safe(selectedTitle)}</b><small>${safe(selectedId)}</small></span><i aria-hidden="true">&#9662;</i></button><div class="quest-picker-menu" role="listbox" aria-label="Choose prerequisite quest" hidden>${unknownChoice}${choices}</div></div><button class="remove-item" data-remove-req="${index}" aria-label="Remove requirement">&times;</button></div><small class="requirement-hint">Unlocks after this quest is completed.</small></div>`;
+  }).join('') : '<div class="empty-state">No prerequisites. This quest is available from the start.</div>';
 
-  $$('.req-select').forEach(select => select.onchange = () => {
-    quest.data.requirements[Number(select.dataset.req)].quest = select.value;
+  $$('.quest-picker-trigger').forEach(trigger => trigger.onclick = () => {
+    const picker = trigger.closest('.quest-picker-control'), menu = picker.querySelector('.quest-picker-menu');
+    const opening = menu.hidden;
+    $$('.quest-picker-control.is-open').forEach(openPicker => {
+      openPicker.classList.remove('is-open');
+      openPicker.querySelector('.quest-picker-menu').hidden = true;
+      openPicker.querySelector('.quest-picker-trigger').setAttribute('aria-expanded', 'false');
+    });
+    if (opening) {
+      picker.classList.add('is-open');
+      menu.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+  });
+  $$('[data-req-choice]').forEach(option => option.onclick = () => {
+    const picker = option.closest('.quest-picker-control');
+    const input = picker.querySelector('[data-req]');
+    const index = Number(input.dataset.req), value = option.dataset.reqValue;
+    quest.data.requirements[index].quest = value;
+    renderRequirements(quest);
     changed();
   });
+  if (!document.documentElement.dataset.reqPickerBound) {
+    document.addEventListener('click', event => {
+      if (event.target.closest('.quest-picker-control')) return;
+      $$('.quest-picker-control.is-open').forEach(picker => {
+        picker.classList.remove('is-open');
+        picker.querySelector('.quest-picker-menu').hidden = true;
+        picker.querySelector('.quest-picker-trigger').setAttribute('aria-expanded', 'false');
+      });
+    });
+    document.documentElement.dataset.reqPickerBound = 'true';
+  }
   $$('[data-remove-req]').forEach(button => button.onclick = () => {
     quest.data.requirements.splice(Number(button.dataset.removeReq), 1);
     renderRequirements(quest);
@@ -362,6 +412,11 @@ function renderOrChild(objective, parentIndex, childIndex) {
       const iconId = entityInfo?.icon || (String(value).startsWith('minecraft:') ? `${value}_spawn_egg` : 'minecraft:barrier');
       return `<label class="field ${wide}"><span>${safe(label)}</span><div class="repeat-item-id-control"><img class="entity-preview" src="${safe(localSprite(iconId))}" alt="" /><input type="text" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}" /><button type="button" class="button small" data-pick-or-entity="${parentIndex}" data-or-child="${childIndex}">Browse</button></div></label>`;
     }
+    if (kind === 'biome') {
+      const selectedBiome = BIOME_CATALOG.find(biome => biome.id === value);
+      const icon = selectedBiome?.icon || 'minecraft:barrier';
+      return `<label class="field ${wide}"><span>${safe(label)}</span><div class="repeat-item-id-control biome-id-control"><img class="biome-preview" src="${safe(localSprite(icon))}" alt="" /><input type="hidden" ${attrs} value="${safe(value)}"><button type="button" class="biome-picker-trigger" data-pick-or-biome="${parentIndex}" data-or-child="${childIndex}" aria-haspopup="dialog"><span class="biome-selected-label"><b>${safe(selectedBiome?.label || 'Unlisted biome')}</b><small>${safe(value)}</small></span><i aria-hidden="true">⌄</i></button></div></label>`;
+    }
     const inputType = kind === 'number' ? 'number' : 'text';
     return `<label class="field ${wide}"><span>${safe(label)}</span><input type="${inputType}" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}"></label>`;
   }).join('');
@@ -411,6 +466,12 @@ function renderRepeater(name, items, types) {
         const options = DIMENSIONS.map(dimension => `<button type="button" class="dimension-option ${dimension.id === value ? 'selected' : ''}" data-dimension-choice="${safe(dimension.id)}" data-dimension-label="${safe(dimension.label)}" data-dimension-icon="${safe(localSprite(dimension.icon))}" role="option" aria-selected="${dimension.id === value}"><img src="${safe(localSprite(dimension.icon))}" alt="" /><span><b>${safe(dimension.label)}</b><small>${safe(dimension.id)}</small></span>${dimension.id === value ? '<i>✓</i>' : ''}</button>`).join('');
         const unknownOption = selectedDimension ? '' : `<button type="button" class="dimension-option selected" data-dimension-choice="${safe(value)}" data-dimension-label="Unlisted dimension" data-dimension-icon="${safe(localSprite(icon))}" role="option" aria-selected="true"><img src="${safe(localSprite(icon))}" alt="" /><span><b>Unlisted dimension</b><small>${safe(value)}</small></span><i>✓</i></button>`;
         return `<label class="field ${wide}"><span>${label}</span><div class="dimension-picker-control"><input type="hidden" data-field="${key}" data-list="${name}" data-index="${index}" value="${safe(value)}"><button type="button" class="dimension-picker-trigger" aria-haspopup="listbox" aria-expanded="false"><img data-dimension-preview src="${safe(localSprite(icon))}" alt="" /><span class="dimension-selected-label"><b>${safe(selectedLabel)}</b><small>${safe(value)}</small></span><i aria-hidden="true">⌄</i></button><div class="dimension-menu" role="listbox" aria-label="Choose dimension" hidden>${unknownOption}${options}</div></div></label>`;
+      }
+      if (kind === 'biome') {
+        const selectedBiome = BIOME_CATALOG.find(biome => biome.id === value);
+        const icon = selectedBiome?.icon || 'minecraft:barrier';
+        const labelText = selectedBiome?.label || 'Unlisted biome';
+        return `<label class="field ${wide}"><span>${label}</span><div class="repeat-item-id-control biome-id-control"><img class="biome-preview" src="${safe(localSprite(icon))}" alt="" /><input type="hidden" data-field="${key}" data-list="${name}" data-index="${index}" value="${safe(value)}"><button type="button" class="biome-picker-trigger" data-pick-biome="${index}" aria-haspopup="dialog"><span class="biome-selected-label"><b>${safe(labelText)}</b><small>${safe(value)}</small></span><i aria-hidden="true">⌄</i></button></div></label>`;
       }
       if (key === 'entity' && name === 'objectives') {
         const entityInfo = ENTITY_CATALOG.find(entity => entity.id === value);
@@ -517,6 +578,10 @@ function renderRepeater(name, items, types) {
     const input = button.parentElement.querySelector('[data-list]');
     openEntityPicker(input);
   });
+  $$('[data-pick-biome]').forEach(button => button.onclick = () => {
+    const input = button.parentElement.querySelector('[data-list="objectives"][data-field="biome"]');
+    openBiomePicker(input);
+  });
   $$('[data-list="objectives"][data-field="entity"]').forEach(input => {
     const preview = input.parentElement.querySelector('.entity-preview');
     preview.onerror = () => { preview.style.visibility = 'hidden'; };
@@ -542,18 +607,20 @@ function renderRepeater(name, items, types) {
         else if (input.type === 'number') child[key] = Number(input.value);
         else if ((input.tagName === 'SELECT' && !input.value) || (key === 'nbt' && !input.value.trim())) delete child[key];
         else child[key] = input.value;
-        if (key === 'item' || key === 'entity') {
+        if (key === 'item' || key === 'entity' || key === 'biome') {
           const preview = input.parentElement.querySelector('img');
           if (preview) {
             const entity = key === 'entity', selected = input.value.trim();
             const info = entity ? ENTITY_CATALOG.find(entry => entry.id === selected) : null;
+            const biome = key === 'biome' ? BIOME_CATALOG.find(entry => entry.id === selected) : null;
             const image = selected && !selected.startsWith('#')
-              ? entity ? info?.icon || (selected.startsWith('minecraft:') ? `${selected}_spawn_egg` : 'minecraft:barrier') : selected
+              ? key === 'biome' ? biome?.icon || 'minecraft:barrier' : entity ? info?.icon || (selected.startsWith('minecraft:') ? `${selected}_spawn_egg` : 'minecraft:barrier') : selected
               : 'minecraft:barrier';
             preview.style.visibility = selected && !selected.startsWith('#') ? 'visible' : 'hidden';
             preview.onerror = () => { preview.style.visibility = 'hidden'; };
             preview.onload = () => { preview.style.visibility = 'visible'; };
             preview.src = localSprite(image);
+            if (key === 'biome') input.parentElement.querySelector('.biome-selected-label').innerHTML = `<b>${safe(biome?.label || 'Unlisted biome')}</b><small>${safe(selected)}</small>`;
           }
         }
         changed();
@@ -568,6 +635,7 @@ function renderRepeater(name, items, types) {
     });
     $$('[data-pick-or-item]').forEach(button => button.onclick = () => openItemPicker(button.parentElement.querySelector('[data-or-field="item"]')));
     $$('[data-pick-or-entity]').forEach(button => button.onclick = () => openEntityPicker(button.parentElement.querySelector('[data-or-field="entity"]')));
+    $$('[data-pick-or-biome]').forEach(button => button.onclick = () => openBiomePicker(button.parentElement.querySelector('[data-or-field="biome"]')));
     $$('[data-add-or]').forEach(button => button.onclick = () => {
       items[Number(button.dataset.addOr)].objectives.push(makeDefault(OR_OBJECTIVES, 'questlog:item_obtain'));
       renderRepeater(name, items, types);
@@ -713,9 +781,29 @@ function changed() {
   $('#fileName').value = quest.fileName;
   quest.chapter = $('#chapter').value;
   quest.data.icon = { ...(quest.data.icon || {}), item: $('#icon').value || 'minecraft:book' };
-  if ($('#visibility').value === 'hidden') quest.data.hidden = true;
+  if ($('#visibility').checked) quest.data.hidden = true;
   else delete quest.data.hidden;
+  const hideWhenCompleted = $('#hideWhenCompleted').checked;
+  if (hideWhenCompleted) quest.data.hide_when_completed = true;
+  else delete quest.data.hide_when_completed;
+  syncHideWhenCompletedToggle(hideWhenCompleted);
   debounceSave();
+}
+
+// Keep the completion toggle's status text in sync with its checked state.
+function syncHideWhenCompletedToggle(enabled) {
+  const status = $('#hideWhenCompletedState');
+  if (!status) return;
+  status.textContent = enabled ? 'HIDES QUEST' : 'STAYS VISIBLE';
+  status.classList.toggle('enabled', enabled);
+}
+
+// Keep the visibility toggle's label in sync with the quest's hidden state.
+function syncQuestVisibilityToggle(hidden) {
+  const status = $('#visibilityState');
+  if (!status) return;
+  status.textContent = hidden ? 'HIDDEN' : 'VISIBLE';
+  status.classList.toggle('enabled', hidden);
 }
 
 // Show the selected quest JSON and its generated filename.

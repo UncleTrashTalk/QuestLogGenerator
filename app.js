@@ -54,7 +54,9 @@ $('#graphChapter').onchange = () => {
   localStorage.setItem('qlover-graph-chapter', graphChapter);
   renderGraph();
 };
-['title', 'description', 'descriptionFailed', 'chapter', 'icon', 'visibility'].forEach(id => $('#'+id).addEventListener('input', changed));
+['title', 'description', 'descriptionFailed', 'chapter', 'icon'].forEach(id => $('#'+id).addEventListener('input', changed));
+$('#visibility').addEventListener('change', changed);
+$('#hideWhenCompleted').addEventListener('change', changed);
 ['leftPanelWidth', 'rightPanelWidth', 'panelHeight', 'backgroundTexture'].forEach(id => $('#'+id).addEventListener('input', changed));
 [['textColorEnabled', 'textColor'], ['titleColorEnabled', 'titleColor'], ['progressTextColorEnabled', 'progressTextColor']].forEach(([toggleId, inputId]) => {
   $(`#${toggleId}`).addEventListener('change', () => { syncOptionalColorControl(toggleId, inputId); changed(); });
@@ -70,6 +72,13 @@ $('#closeItemPicker').onclick = () => $('#itemDialog').close();
 $('#itemSearch').oninput = renderItemGrid;
 $('#closeEntityPicker').onclick = () => $('#entityDialog').close();
 $('#entitySearch').oninput = renderEntityGrid;
+$('#closeBiomePicker').onclick = () => $('#biomeDialog').close();
+$('#biomeSearch').oninput = renderBiomeGrid;
+$$('[data-biome-category]').forEach(button => button.onclick = () => {
+  biomePickerCategory = button.dataset.biomeCategory;
+  $$('[data-biome-category]').forEach(category => category.classList.toggle('active', category === button));
+  renderBiomeGrid();
+});
 $$('[data-entity-category]').forEach(button => button.onclick = () => {
   entityPickerCategory = button.dataset.entityCategory;
   $$('[data-entity-category]').forEach(category => category.classList.toggle('active', category === button));
@@ -98,10 +107,13 @@ $('#itemDialog').addEventListener('click', event => {
 $('#entityDialog').addEventListener('click', event => {
   if (event.target === $('#entityDialog')) $('#entityDialog').close();
 });
+$('#biomeDialog').addEventListener('click', event => {
+  if (event.target === $('#biomeDialog')) $('#biomeDialog').close();
+});
 $('#textureDialog').addEventListener('click', event => {
   if (event.target === $('#textureDialog')) $('#textureDialog').close();
 });
-['chapter', 'visibility'].forEach(id => $('#'+id).addEventListener('change', changed));
+$('#chapter').addEventListener('change', changed);
 
 // Add or remove prerequisite, objective, and reward records for the selected quest.
 $('#addRequirement').onclick = () => {

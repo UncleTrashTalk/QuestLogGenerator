@@ -158,8 +158,9 @@ function renderGraph() {
     const objective = objectives[0];
     const type = objective?.type || '';
     const dimension = type === 'questlog:visit_dimension' ? DIMENSIONS.find(item => item.id === objective.dimension) : null;
+    const biome = type === 'questlog:biome' ? BIOME_CATALOG.find(item => item.id === objective.biome) : null;
     const targetId = objective?.item?.id || objective?.item || objective?.entity || objective?.block || objective?.stat || objective?.biome;
-    const iconId = dimension?.icon || (type.startsWith('questlog:item_')
+    const iconId = dimension?.icon || biome?.icon || (type.startsWith('questlog:item_')
       ? targetId || 'minecraft:paper'
       : type === 'questlog:block_mine' || type === 'questlog:block_place' ? targetId || 'minecraft:stone'
       : type === 'questlog:entity_kill' || type === 'questlog:entity_death' ? 'minecraft:iron_sword'

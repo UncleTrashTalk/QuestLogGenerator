@@ -122,3 +122,35 @@ function renderEntityGrid() {
   });
   $$('#entityGrid img').forEach(image => image.onerror = () => { image.style.visibility = 'hidden'; });
 }
+
+// Open the biome-tag picker in the category matching the current biome ID.
+function openBiomePicker(target) {
+  biomePickerTarget = target;
+  const namespace = String(target?.value || '').split(':')[0];
+  biomePickerCategory = BIOME_CATEGORIES.some(category => category.id === namespace) ? namespace : 'minecraft';
+  $('#biomeSearch').value = '';
+  $$('[data-biome-category]').forEach(button => button.classList.toggle('active', button.dataset.biomeCategory === biomePickerCategory));
+  renderBiomeGrid();
+  $('#biomeDialog').showModal();
+}
+
+// Filter biomes by the active category, or across all mods while searching.
+function renderBiomeGrid() {
+  const query = $('#biomeSearch').value.trim().toLowerCase();
+  const source = query ? BIOME_CATALOG : BIOME_CATALOG.filter(biome => biome.category === biomePickerCategory);
+  const matched = source.filter(biome => biome.label.toLowerCase().includes(query) || biome.id.toLowerCase().includes(query));
+  const category = BIOME_CATEGORIES.find(item => item.id === biomePickerCategory)?.label || 'Minecraft';
+  $('#biomeStatus').textContent = `${matched.length} biomes${query ? ' across all categories' : ` in ${category}`}`;
+  $('#biomeGrid').innerHTML = matched.map(biome => `<button class="item-option" type="button" data-biome-id="${safe(biome.id)}"><img loading="lazy" src="${safe(localSprite(biome.icon))}" alt="" /><span><b>${safe(biome.label)}</b><small>${safe(biome.id)}</small></span></button>`).join('');
+  $$('[data-biome-id]').forEach(button => button.onclick = () => {
+    if (!biomePickerTarget) return;
+    const biome = BIOME_CATALOG.find(item => item.id === button.dataset.biomeId);
+    biomePickerTarget.value = button.dataset.biomeId;
+    const control = biomePickerTarget.parentElement;
+    control.querySelector('.biome-preview').src = localSprite(biome?.icon || 'minecraft:barrier');
+    control.querySelector('.biome-selected-label').innerHTML = `<b>${safe(biome?.label || 'Unlisted biome')}</b><small>${safe(button.dataset.biomeId)}</small>`;
+    biomePickerTarget.dispatchEvent(new Event('input', { bubbles: true }));
+    $('#biomeDialog').close();
+  });
+  $$('#biomeGrid img').forEach(image => image.onerror = () => { image.style.visibility = 'hidden'; });
+}

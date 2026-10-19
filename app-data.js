@@ -17,6 +17,7 @@ const OBJECTIVES = {
   'questlog:item_drop': { label: 'Drop item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Drop a Diamond']] },
   'questlog:item_equip': { label: 'Equip item', fields: [['item', 'Item ID or tag', 'minecraft:iron_helmet'], ['slot', 'Equipment slot (optional)', undefined, 'select', ['', 'Any slot'], ['mainhand', 'Mainhand'], ['offhand', 'Offhand'], ['head', 'Head'], ['chest', 'Chest'], ['legs', 'Legs'], ['feet', 'Feet']], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Equip an Iron Helmet']] },
   'questlog:item_obtain': { label: 'Obtain item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Obtain 1 Diamond']] },
+  'questlog:biome': { label: 'Visit biome', fields: [['biome', 'Biome tag', 'minecraft:plains', 'biome'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Visit a Biome']] },
   'questlog:or': { label: 'Any one objective', fields: [] }
 };
 const OR_OBJECTIVES = Object.fromEntries(Object.entries(OBJECTIVES).filter(([type]) => type !== 'questlog:or'));
@@ -100,7 +101,7 @@ const FAILURES = {
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let state = { quests: [], chapters: [], selected: null };
-let toastTimer, itemCatalog = [], pickerTarget = null, pickerCategory = 'minecraft', entityPickerTarget = null, entityPickerCategory = 'minecraft';
+let toastTimer, itemCatalog = [], pickerTarget = null, pickerCategory = 'minecraft', entityPickerTarget = null, entityPickerCategory = 'minecraft', biomePickerTarget = null, biomePickerCategory = 'minecraft';
 let graphChapter = localStorage.getItem('qlover-graph-chapter') || '';
 let questChapterFilter = 'all';
 let showAllQuestsMap = false;
