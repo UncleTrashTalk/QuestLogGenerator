@@ -30,6 +30,9 @@ function renderGraph() {
     rewardXpGlow: '#f5c451aa',
     rewardRandom: '#c084fc',
     rewardRandomGlow: '#c084fcaa',
+    choice: dark ? '#c084fc' : '#7b4ca7',
+    choiceFill: dark ? '#31243f' : '#f0e7f8',
+    choiceBorder: dark ? '#78549a' : '#c6a5df',
     objective: dark ? '#b8c9ba' : '#607667'
   };
 
@@ -168,16 +171,41 @@ function renderGraph() {
     const target = String(targetId || objective?.dimension || objective?.quest || '').split(':').pop().replace(/[_-]+/g, ' ');
     const amount = Number(objective?.required_amount);
     const name = objective?.name || dimension?.label || (target ? `${typeLabel}: ${target}` : typeLabel);
+    const objectiveChoices = type === 'questlog:or' ? (objective.objectives || []).map(option => {
+      const optionType = option.type || '';
+      const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat || option.dimension;
+      const optionTypeLabel = OBJECTIVES[optionType]?.label || (optionType ? optionType.replace(/^.*:/, '').replace(/[_-]+/g, ' ') : 'Objective');
+      const optionTargetLabel = String(optionTarget || '').split(':').pop().replace(/[_-]+/g, ' ');
+      const optionName = option.name || (optionTargetLabel ? `${optionTypeLabel}: ${optionTargetLabel}` : optionTypeLabel);
+      const optionAmount = Number(option.required_amount);
+      const amountAlreadyNamed = optionAmount > 1 && new RegExp(`\\b${optionAmount}\\b`).test(optionName);
+      const optionText = `${optionName}${optionAmount > 1 && !amountAlreadyNamed ? ` ×${optionAmount}` : ''}`;
+      const optionEntity = ENTITY_CATALOG.find(entity => entity.id === option.entity);
+      const optionIcon = option.item?.id || option.item || optionEntity?.icon || (option.entity?.startsWith('minecraft:') ? `${option.entity}_spawn_egg` : optionType === 'questlog:entity_breed' ? 'minecraft:wheat' : optionType === 'questlog:entity_tame' ? 'minecraft:lead' : option.entity ? 'minecraft:iron_sword' : option.block || (optionType === 'questlog:stat' ? 'minecraft:clock' : 'minecraft:paper'));
+      return { text: optionText, lines: wrapObjective(optionText), icon: localSprite(optionIcon) };
+    }) : [];
+    const choiceContentHeight = objectiveChoices.length
+      ? 8 + objectiveChoices.reduce((height, option) => height + Math.max(20, option.lines.length * 10 + 6), 0) + Math.max(0, objectiveChoices.length - 1) * 10
+      : 0;
+    const choiceExtra = Math.max(0, choiceContentHeight - 24);
     const summary = objectives.length
-      ? `${name}${amount > 1 ? ` ×${amount}` : ''}${objectives.length > 1 ? ` +${objectives.length - 1}` : ''}`
+      ? type === 'questlog:or' ? 'Choose one objective' : `${name}${amount > 1 ? ` ×${amount}` : ''}${objectives.length > 1 ? ` +${objectives.length - 1}` : ''}`
       : 'No objectives';
     const tooltip = objectives.map(item => {
+      if (item.type === 'questlog:or') {
+        const alternatives = (item.objectives || []).map(option => {
+          const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat;
+          const quantity = Number(option.required_amount);
+          return `${option.name || OBJECTIVES[option.type]?.label || option.type}${optionTarget ? ` (${optionTarget})` : ''}${quantity > 1 ? ` ×${quantity}` : ''}`;
+        });
+        return `${item.name || 'Choose one objective'}:\n${alternatives.map((alternative, index) => `${index + 1}. ${alternative}`).join('\nOR\n')}`;
+      }
       const label = item.name || OBJECTIVES[item.type]?.label || item.type || 'Objective';
       const itemTarget = item.item?.id || item.item || item.entity || item.block || item.stat || item.dimension;
       const quantity = Number(item.required_amount);
       return `${label}${itemTarget ? ` (${itemTarget})` : ''}${quantity > 1 ? ` ×${quantity}` : ''}`;
     }).join('\n');
-    return { objectiveIconId: iconId, objectiveSummary: summary, objectiveLines: wrapObjective(summary), objectiveTooltip: tooltip, hasObjectives: objectives.length > 0 };
+    return { objectiveIconId: iconId, objectiveSummary: summary, objectiveLines: wrapObjective(summary), objectiveTooltip: tooltip, objectiveChoices, choiceContentHeight, choiceExtra, hasChoiceObjective: objectiveChoices.length > 0, hasObjectives: objectives.length > 0 };
   }
   // Show the first failure condition on the card and expose all conditions in its tooltip.
   function describeFailures(quest) {
@@ -208,7 +236,7 @@ function renderGraph() {
     node.texture = window.MINECRAFT_TEXTURE_CATALOG?.find(texture => texture.id === node.quest.data.background_texture) || null;
     node.rewardBadges = describeQuestRewards(node.quest);
     node.rewardRows = layoutRewardBadges(node.rewardBadges);
-    const objectiveExtra = Math.max(0, node.objectiveLines.length - 1) * 12;
+    const objectiveExtra = Math.max(0, node.objectiveLines.length - 1) * 12 + node.choiceExtra;
     const descriptionExtra = node.descriptionLines.length * 12;
     const failureExtra = node.hasFailures ? 14 + Math.max(0, node.failureLines.length - 1) * 12 : 0;
     const titleAndDetailsHeight = nodeHeight + Math.max(0, node.titleLines.length - 1) * 12 + objectiveExtra + descriptionExtra + failureExtra;
@@ -404,10 +432,26 @@ function renderGraph() {
     const descriptionDetail = node.descriptionLines.map((line, lineIndex) => `<text x="${x + 29}" y="${descriptionY + lineIndex * 12}" fill="${safe(descriptionColor)}" font-size="7.5" font-family="DM Sans, sans-serif">${safe(line)}</text>`).join('');
     const objectiveY = detailY + node.descriptionLines.length * 12;
     const objectiveColor = node.quest.data.progress_text_color || palette.objective;
-    const objectiveDetail = node.hasObjectives
+    let choiceMarkup = '';
+    if (node.hasChoiceObjective) {
+      let choiceY = objectiveY + 7;
+      choiceMarkup = `<rect x="${x + 29}" y="${objectiveY - 9}" width="47" height="11" rx="3" fill="${palette.choiceFill}" stroke="${palette.choiceBorder}" stroke-width=".7"/><text x="${x + 34}" y="${objectiveY - 1}" fill="${palette.choice}" font-size="6.5" font-family="DM Sans, sans-serif" font-weight="700" letter-spacing=".35">ANY ONE</text>`;
+      node.objectiveChoices.forEach((option, optionIndex) => {
+        const boxHeight = Math.max(20, option.lines.length * 10 + 6);
+        choiceMarkup += `<rect x="${x + 27}" y="${choiceY}" width="${nodeWidth - 36}" height="${boxHeight}" rx="4" fill="${palette.choiceFill}" stroke="${palette.choiceBorder}" stroke-width=".8"/><image href="${safe(option.icon)}" x="${x + 31}" y="${choiceY + 4}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>${option.lines.map((line, lineIndex) => `<text x="${x + (lineIndex === 0 ? 46 : 31)}" y="${choiceY + 13 + lineIndex * 10}" fill="${safe(objectiveColor)}" font-size="7" font-family="DM Sans, sans-serif">${safe(line)}</text>`).join('')}`;
+        choiceY += boxHeight;
+        if (optionIndex < node.objectiveChoices.length - 1) {
+          choiceMarkup += `<text x="${x + nodeWidth / 2 - 6}" y="${choiceY + 8}" fill="${palette.choice}" font-size="6.5" font-family="DM Sans, sans-serif" font-weight="700">OR</text>`;
+          choiceY += 10;
+        }
+      });
+    }
+    const objectiveDetail = node.hasChoiceObjective
+      ? `<title>${safe(node.objectiveTooltip)}</title>${choiceMarkup}`
+      : node.hasObjectives
       ? `<title>${safe(node.objectiveTooltip)}</title><image href="${safe(localSprite(node.objectiveIconId))}" x="${x + 29}" y="${objectiveY - 10}" width="12" height="12" preserveAspectRatio="xMidYMid meet"/>${node.objectiveLines.map((line, lineIndex) => `<text x="${x + (lineIndex === 0 ? 45 : 29)}" y="${objectiveY + lineIndex * 12}" fill="${safe(objectiveColor)}" font-size="8" font-family="DM Sans, sans-serif">${safe(line)}</text>`).join('')}`
       : `<text x="${x + 29}" y="${objectiveY}" fill="${safe(objectiveColor)}" font-size="8" font-family="DM Sans, sans-serif">${safe(node.objectiveSummary)}</text>`;
-    const failureY = objectiveY + node.objectiveLines.length * 12 + 2;
+    const failureY = objectiveY + node.objectiveLines.length * 12 + node.choiceContentHeight + 2;
     const failureDetail = node.hasFailures
       ? `<title>${safe(node.failureTooltip)}</title>${node.failureLines.map((line, lineIndex) => `<text x="${x + 29}" y="${failureY + lineIndex * 12}" fill="${palette.failure}" font-size="7.5" font-family="DM Sans, sans-serif" font-weight="600" style="filter:drop-shadow(0 0 3px ${palette.failureGlow})">${safe(line)}</text>`).join('')}`
       : '';

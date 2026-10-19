@@ -337,6 +337,46 @@ function bindEnchantmentControls(host) {
   host.dataset.enchantmentEventsBound = 'true';
 }
 
+// Render one leaf objective inside an OR group with the same item and entity pickers.
+function renderOrChild(objective, parentIndex, childIndex) {
+  const type = OR_OBJECTIVES[objective.type] ? objective.type : Object.keys(OR_OBJECTIVES)[0];
+  const config = OR_OBJECTIVES[type];
+  const typeOptions = Object.entries(OR_OBJECTIVES).map(([value, entry]) => `<option value="${safe(value)}" ${value === type ? 'selected' : ''}>${safe(entry.label)}</option>`).join('');
+  const fields = config.fields.map(field => {
+    const [key, label, defaultValue, kind] = field;
+    const value = objective[key] ?? defaultValue ?? '';
+    const attrs = `data-or-field="${safe(key)}" data-or-parent="${parentIndex}" data-or-child="${childIndex}"`;
+    const wide = key === 'name' || key === 'nbt' ? 'wide' : '';
+    if (kind === 'checkbox') return `<label class="check-field wide"><input type="checkbox" ${attrs} ${objective[key] ?? defaultValue ? 'checked' : ''}>${safe(label)}</label>`;
+    if (kind === 'select') {
+      const choices = field.slice(4);
+      const options = choices.map(([optionValue, optionLabel]) => `<option value="${safe(optionValue)}" ${String(optionValue) === String(value) ? 'selected' : ''}>${safe(optionLabel)}</option>`).join('');
+      return `<label class="field ${wide}"><span>${safe(label)}</span><select ${attrs}>${options}</select></label>`;
+    }
+    if (key === 'item') {
+      const iconId = value && !String(value).startsWith('#') ? value : 'minecraft:barrier';
+      return `<label class="field ${wide}"><span>${safe(label)}</span><div class="repeat-item-id-control"><img class="item-preview" src="${safe(localSprite(iconId))}" alt="" /><input type="text" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}" /><button type="button" class="button small" data-pick-or-item="${parentIndex}" data-or-child="${childIndex}">Browse</button></div></label>`;
+    }
+    if (key === 'entity') {
+      const entityInfo = ENTITY_CATALOG.find(entity => entity.id === value);
+      const iconId = entityInfo?.icon || (String(value).startsWith('minecraft:') ? `${value}_spawn_egg` : 'minecraft:barrier');
+      return `<label class="field ${wide}"><span>${safe(label)}</span><div class="repeat-item-id-control"><img class="entity-preview" src="${safe(localSprite(iconId))}" alt="" /><input type="text" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}" /><button type="button" class="button small" data-pick-or-entity="${parentIndex}" data-or-child="${childIndex}">Browse</button></div></label>`;
+    }
+    const inputType = kind === 'number' ? 'number' : 'text';
+    return `<label class="field ${wide}"><span>${safe(label)}</span><input type="${inputType}" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}"></label>`;
+  }).join('');
+  return `<div class="or-objective-option"><div class="or-objective-head"><select data-or-type="${parentIndex}" data-or-child="${childIndex}">${typeOptions}</select>${objective.objectives?.length > 2 ? `<button type="button" class="remove-item" data-remove-or="${parentIndex}" data-or-child="${childIndex}" aria-label="Remove alternative">×</button>` : ''}</div><div class="repeat-fields">${fields}</div></div>`;
+}
+
+// Render an OR objective and its alternative objectives as a nested form section.
+function renderOrObjective(objective, index, types) {
+  objective.objectives = Array.isArray(objective.objectives) ? objective.objectives : [makeDefault(OR_OBJECTIVES, 'questlog:item_obtain'), makeDefault(OR_OBJECTIVES, 'questlog:entity_kill')];
+  if (objective.objectives.length < 2) objective.objectives = [makeDefault(OR_OBJECTIVES, 'questlog:item_obtain'), makeDefault(OR_OBJECTIVES, 'questlog:entity_kill')];
+  const typeOptions = Object.entries(types).map(([value, entry]) => `<option value="${safe(value)}" ${value === 'questlog:or' ? 'selected' : ''}>${safe(entry.label)}</option>`).join('');
+  const children = objective.objectives.map((child, childIndex) => renderOrChild(child, index, childIndex)).join('');
+  return `<div class="repeat-item or-objective"><div class="repeat-top"><select data-kind="objectives" data-index="${index}">${typeOptions}</select><button class="remove-item" data-remove="objectives" data-index="${index}" aria-label="Remove objective">×</button></div><div class="repeat-fields"><label class="field wide"><span>Group display name</span><input type="text" data-or-name="${index}" value="${safe(objective.name || '')}" placeholder="Complete either objective"></label><div class="or-objectives wide">${children}</div><button type="button" class="button small or-add" data-add-or="${index}"><span aria-hidden="true">+</span> Add alternative</button></div></div>`;
+}
+
 function renderRepeater(name, items, types) {
   const host = $(`#${name}`);
   if (!items.length) {
@@ -346,6 +386,7 @@ function renderRepeater(name, items, types) {
 
   host.innerHTML = items.map((item, index) => {
     const type = item.type || Object.keys(types)[0];
+    if (name === 'objectives' && type === 'questlog:or') return renderOrObjective(item, index, types);
     if (name === 'rewards' && type === 'questlog:random') return renderRandomReward(item, index);
     if (name === 'rewards' && type === 'questlog:experience' && item.experience === undefined && item.amount !== undefined) {
       item.experience = item.amount;
@@ -488,6 +529,56 @@ function renderRepeater(name, items, types) {
       preview.src = value && !value.startsWith('#') ? localSprite(icon) : '';
     });
   });
+  if (name === 'objectives') {
+    $$('[data-or-name]').forEach(input => input.addEventListener('input', () => {
+      items[Number(input.dataset.orName)].name = input.value;
+      changed();
+    }));
+    $$('[data-or-field]').forEach(input => {
+      const update = () => {
+        const parentIndex = Number(input.dataset.orParent), childIndex = Number(input.dataset.orChild), key = input.dataset.orField;
+        const child = items[parentIndex].objectives[childIndex];
+        if (input.type === 'checkbox') child[key] = input.checked;
+        else if (input.type === 'number') child[key] = Number(input.value);
+        else if ((input.tagName === 'SELECT' && !input.value) || (key === 'nbt' && !input.value.trim())) delete child[key];
+        else child[key] = input.value;
+        if (key === 'item' || key === 'entity') {
+          const preview = input.parentElement.querySelector('img');
+          if (preview) {
+            const entity = key === 'entity', selected = input.value.trim();
+            const info = entity ? ENTITY_CATALOG.find(entry => entry.id === selected) : null;
+            const image = selected && !selected.startsWith('#')
+              ? entity ? info?.icon || (selected.startsWith('minecraft:') ? `${selected}_spawn_egg` : 'minecraft:barrier') : selected
+              : 'minecraft:barrier';
+            preview.style.visibility = selected && !selected.startsWith('#') ? 'visible' : 'hidden';
+            preview.onerror = () => { preview.style.visibility = 'hidden'; };
+            preview.onload = () => { preview.style.visibility = 'visible'; };
+            preview.src = localSprite(image);
+          }
+        }
+        changed();
+      };
+      input.addEventListener(input.type === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input', update);
+    });
+    $$('[data-or-type]').forEach(select => select.onchange = () => {
+      const parentIndex = Number(select.dataset.orType), childIndex = Number(select.dataset.orChild);
+      items[parentIndex].objectives[childIndex] = makeDefault(OR_OBJECTIVES, select.value);
+      renderRepeater(name, items, types);
+      changed();
+    });
+    $$('[data-pick-or-item]').forEach(button => button.onclick = () => openItemPicker(button.parentElement.querySelector('[data-or-field="item"]')));
+    $$('[data-pick-or-entity]').forEach(button => button.onclick = () => openEntityPicker(button.parentElement.querySelector('[data-or-field="entity"]')));
+    $$('[data-add-or]').forEach(button => button.onclick = () => {
+      items[Number(button.dataset.addOr)].objectives.push(makeDefault(OR_OBJECTIVES, 'questlog:item_obtain'));
+      renderRepeater(name, items, types);
+      changed();
+    });
+    $$('[data-remove-or]').forEach(button => button.onclick = () => {
+      items[Number(button.dataset.removeOr)].objectives.splice(Number(button.dataset.orChild), 1);
+      renderRepeater(name, items, types);
+      changed();
+    });
+  }
   if (name === 'rewards') bindRandomRewardControls(items);
 }
 
@@ -586,6 +677,7 @@ function bindRandomRewardControls(items) {
 // Build a complete default object for a newly selected objective or reward type.
 function makeDefault(types, type) {
   if (types === REWARDS && type === 'questlog:random') return { type, roll_count: 1, empty_weight: 0, entries: [{ weight: 1, reward: makeDefault(REWARDS, 'questlog:item') }] };
+  if (types === OBJECTIVES && type === 'questlog:or') return { type, name: 'Complete either objective', objectives: [makeDefault(OR_OBJECTIVES, 'questlog:item_obtain'), makeDefault(OR_OBJECTIVES, 'questlog:entity_kill')] };
   const config = types[type], item = { type };
   for (const [key, , value, kind] of config.fields) {
     item[key] = kind === 'checkbox' ? !!value : kind === 'number' ? Number(value) : value;

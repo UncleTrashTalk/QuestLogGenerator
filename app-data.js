@@ -16,8 +16,10 @@ const OBJECTIVES = {
   'questlog:item_craft': { label: 'Craft item', fields: [['item', 'Item ID or tag', 'minecraft:torch'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Craft 1 Torch']] },
   'questlog:item_drop': { label: 'Drop item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Drop a Diamond']] },
   'questlog:item_equip': { label: 'Equip item', fields: [['item', 'Item ID or tag', 'minecraft:iron_helmet'], ['slot', 'Equipment slot (optional)', undefined, 'select', ['', 'Any slot'], ['mainhand', 'Mainhand'], ['offhand', 'Offhand'], ['head', 'Head'], ['chest', 'Chest'], ['legs', 'Legs'], ['feet', 'Feet']], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Equip an Iron Helmet']] },
-  'questlog:item_obtain': { label: 'Obtain item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Obtain 1 Diamond']] }
+  'questlog:item_obtain': { label: 'Obtain item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Obtain 1 Diamond']] },
+  'questlog:or': { label: 'Any one objective', fields: [] }
 };
+const OR_OBJECTIVES = Object.fromEntries(Object.entries(OBJECTIVES).filter(([type]) => type !== 'questlog:or'));
 
 // Build the vanilla mob picker from local spawn egg images included in the item catalog.
 const VANILLA_ENTITY_CATALOG = (window.LOCAL_ITEM_CATALOG || [])
