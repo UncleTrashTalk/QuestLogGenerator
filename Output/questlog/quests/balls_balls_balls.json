@@ -1,0 +1,30 @@
+{
+  "title": "Balls, balls, balls.",
+  "description": "Time to get some Pokeballs to catch some Pokemon!",
+  "icon": {
+    "item": "cobblemon:poke_ball"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:getting_started"
+    }
+  ],
+  "objectives": [
+    {
+      "type": "questlog:item_obtain",
+      "item": "cobblemon:poke_ball",
+      "required_amount": 10,
+      "name": "Obtain 10 Pokeballs"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:item",
+      "item": "cobblemon:great_ball",
+      "count": 10,
+      "auto_claim": true
+    }
+  ],
+  "chapter": "questlog:main"
+}

@@ -1,0 +1,42 @@
+{
+  "title": "Quest Random Reward",
+  "description": "",
+  "icon": {
+    "item": "minecraft:book"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:getting_started"
+    }
+  ],
+  "objectives": [],
+  "rewards": [
+    {
+      "type": "questlog:random",
+      "roll_count": 1,
+      "empty_weight": 0,
+      "entries": [
+        {
+          "weight": 1,
+          "reward": {
+            "type": "questlog:item",
+            "item": "minecraft:diamond",
+            "count": 1,
+            "auto_claim": true
+          }
+        },
+        {
+          "weight": 3,
+          "reward": {
+            "type": "questlog:item",
+            "item": "minecraft:diamond",
+            "count": 1,
+            "auto_claim": true
+          }
+        }
+      ]
+    }
+  ],
+  "chapter": "questlog:main"
+}

@@ -1,0 +1,29 @@
+{
+  "title": "Qeust XP reward",
+  "description": "dsfsdfds",
+  "icon": {
+    "item": "minecraft:blaze_powder"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:quest_random_reward"
+    }
+  ],
+  "objectives": [
+    {
+      "type": "questlog:visit_dimension",
+      "dimension": "aether:the_aether",
+      "required_amount": 1,
+      "name": "Visit the Aether"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:experience",
+      "experience": 500
+    }
+  ],
+  "hidden": true,
+  "chapter": "questlog:main"
+}

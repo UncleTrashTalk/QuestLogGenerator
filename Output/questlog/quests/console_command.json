@@ -1,0 +1,34 @@
+{
+  "title": "Console command ",
+  "description": "This is a description",
+  "icon": {
+    "item": "cobblesafari:balm_distortion"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:balls_balls_balls"
+    }
+  ],
+  "objectives": [
+    {
+      "type": "questlog:visit_dimension",
+      "dimension": "cobblesafari:dungeon_distortion",
+      "required_amount": 1,
+      "name": "Visit the Distortion World"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:command",
+      "command": "/say Quest complete!",
+      "permission_level": 2
+    }
+  ],
+  "failures": [],
+  "background_texture": "minecraft:textures/block/end_stone_bricks.png",
+  "title_color": "#075D6E",
+  "text_color": "#000000",
+  "progress_text_color": "#000000",
+  "chapter": "questlog:main"
+}

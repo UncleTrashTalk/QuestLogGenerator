@@ -1,0 +1,31 @@
+{
+  "title": "Getting Started",
+  "description": "Craft a crafting table",
+  "icon": {
+    "item": "minecraft:crafting_table"
+  },
+  "requirements": [],
+  "objectives": [
+    {
+      "type": "questlog:item_craft",
+      "item": "minecraft:crafting_table",
+      "required_amount": 1,
+      "name": "Craft a crafting table"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:item",
+      "item": "cobblemon:red_apricorn_seed",
+      "count": 1,
+      "auto_claim": true
+    },
+    {
+      "type": "questlog:item",
+      "item": "cobblemon:white_apricorn_seed",
+      "count": 1,
+      "auto_claim": true
+    }
+  ],
+  "chapter": "questlog:main"
+}

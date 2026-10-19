@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#8db596" />
+  <title>Qlover Quest Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="picker.css" />
+  <link rel="stylesheet" href="theme.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><img class="brand-logo" src="./Images/logo/logo.png" alt="" /><span>QLOVER <b>QUEST GENERATOR</b><small>QuestLog JSON Generator</small></span></a>
+    <div class="project-status"><span class="status-dot"></span><span id="saveStatus">Saved locally</span><span class="divider"></span><span id="itemCount">0 quests � 0 chapters</span></div>
+    <div class="top-actions"><button class="button quiet theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark theme" title="Switch to dark theme"><span aria-hidden="true">?</span><span class="theme-toggle-label">Dark theme</span></button><label class="button quiet" for="importFiles">Import JSON</label><input id="importFiles" type="file" accept=".json,application/json" multiple hidden><button class="button primary" id="exportAll">Save project files ?</button></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="side-head"><div><span class="eyebrow">YOUR PROJECT</span><h1>Quest library</h1></div></div>
+      <button class="button view-all-quests-button" id="viewAllQuests" type="button" aria-pressed="false"><span aria-hidden="true">⌘</span> View All Quests</button>
+      <label class="search"><span>?</span><input id="search" placeholder="Find a quest..." /></label>
+      <div class="sidebar-chapters">
+        <div class="section-label chapter-section-label"><span>CHAPTERS</span><button class="text-button sidebar-new-quest" id="newChapter" type="button"><span aria-hidden="true">+</span> New chapter</button><span id="chapterCount">0</span></div>
+        <div id="chapterList"></div>
+        <button class="all-chapters-button" id="allChapters" type="button">All chapters <small id="allChapterQuestCount">0</small></button>
+      </div>
+      <div class="section-label quest-section-label"><span>QUESTS</span><button class="text-button sidebar-new-quest" id="newQuest" type="button"><span aria-hidden="true">+</span> New quest</button><span id="questCount">0</span></div>
+      <div class="quest-list" id="questList"></div>
+      <div class="sidebar-bottom"><div class="local-note"><span class="note-icon">?</span><div><b>Saved on this device</b><small>Your project autosaves in this browser.</small></div></div></div>
+    </aside>
+    <section class="workspace">
+      <div class="workspace-head"><div class="breadcrumbs"><span>PROJECT</span><span>�</span><span id="crumbQuest">NEW QUEST</span></div><div class="head-actions"><button class="button quiet" id="duplicateQuest">Duplicate</button><button class="button danger-quiet" id="deleteQuest">Delete quest</button></div></div>
+      <div class="content-grid">
+        <div class="editor-column">
+          <div class="title-block"><div class="quest-glyph">?</div><div><span class="eyebrow">QUEST EDITOR <span class="version-pill">QUESTLOG 1.20.1</span></span><h2 id="editorTitle">Create a quest</h2><p>Define what players see, complete, and earn.</p></div></div>
+          <section class="card"><div class="card-head"><div><span class="step">01</span><div><h3>Quest details</h3><p>Identity and player-facing information</p></div></div></div>
+            <div class="field-grid"><label class="field span-2"><span>Quest title <i>required</i></span><input id="title" placeholder="e.g. A New Beginning" required /></label><label class="field span-2"><span>Description</span><textarea id="description" rows="3" placeholder="Tell the player what this quest is about..."></textarea></label>
+              <label class="field"><span>Generated file name <i>from title</i></span><div class="input-prefix"><span>quests/</span><input id="fileName" placeholder="a_new_beginning" readonly aria-label="Generated quest file name" /><span>.json</span></div></label><label class="field"><span>Chapter</span><select id="chapter"></select></label>
+              <label class="field"><span>Icon item ID</span><div class="icon-item-control"><img id="iconPreview" alt="" /><input id="icon" placeholder="minecraft:iron_pickaxe" /><button type="button" class="button small" id="pickIcon">Browse</button></div></label><label class="field"><span>Quest visibility</span><select id="visibility"><option value="visible">Visible</option><option value="hidden">Hidden</option></select></label>
+            </div>
+          </section>
+          <section class="card"><div class="card-head"><div><span class="step">02</span><div><h3>Requirements <i>optional</i></h3><p>Prerequisites that unlock this quest</p></div></div><button class="button small" id="addRequirement"><span class="add-button-icon" aria-hidden="true">+</span> Add requirement</button></div><div id="requirements" class="repeat-list"></div></section>
+          <section class="card"><div class="card-head"><div><span class="step">03</span><div><h3>Objectives</h3><p>Tasks the player needs to complete</p></div></div><button class="button small" id="addObjective"><span class="add-button-icon" aria-hidden="true">+</span> Add objective</button></div><div id="objectives" class="repeat-list"></div></section>
+          <section class="card"><div class="card-head"><div><span class="step">04</span><div><h3>Fail state <i>optional</i></h3><p>Set a failure condition and message shown when the player fails</p></div></div><button class="button small" id="addFailure"><span class="add-button-icon" aria-hidden="true">+</span> Add failure</button></div><label class="field span-2 failure-description"><span>Failed description</span><textarea id="descriptionFailed" rows="2" placeholder="Message shown when this quest fails..."></textarea></label><div id="failures" class="repeat-list"></div></section>
+          <section class="card"><div class="card-head"><div><span class="step">05</span><div><h3>Rewards <i>optional</i></h3><p>What the player receives on completion</p></div></div><button class="button small" id="addReward"><span class="add-button-icon" aria-hidden="true">+</span> Add reward</button></div><div id="rewards" class="repeat-list"></div></section>
+          <section class="card quest-styling"><div class="card-head"><div><span class="step">06</span><div><h3>Quest styling <i>optional</i></h3><p>Customize the quest screen colors, panels, and background</p></div></div></div>
+            <div class="field-grid">
+              <label class="field"><span>Text color</span><div class="optional-color"><input id="textColorEnabled" type="checkbox" aria-label="Use custom text color" /><input id="textColor" type="color" value="#ffffff" aria-label="Text color" /></div></label>
+              <label class="field"><span>Title color</span><div class="optional-color"><input id="titleColorEnabled" type="checkbox" aria-label="Use custom title color" /><input id="titleColor" type="color" value="#ffffff" aria-label="Title color" /></div></label>
+              <label class="field"><span>Progress text color</span><div class="optional-color"><input id="progressTextColorEnabled" type="checkbox" aria-label="Use custom progress text color" /><input id="progressTextColor" type="color" value="#ffffff" aria-label="Progress text color" /></div></label>
+              <label class="field"><span>Left panel width</span><input id="leftPanelWidth" type="number" min="1" step="1" placeholder="Default" /></label>
+              <label class="field"><span>Right panel width</span><input id="rightPanelWidth" type="number" min="1" step="1" placeholder="Default" /></label>
+              <label class="field"><span>Panel height</span><input id="panelHeight" type="number" min="1" step="1" placeholder="Default" /></label>
+              <label class="field span-2"><span>Background texture</span><div class="texture-control"><img id="backgroundTexturePreview" alt="" /><input id="backgroundTexture" placeholder="Choose a Minecraft texture" readonly /><button type="button" class="texture-clear" id="clearBackgroundTexture" title="Clear background texture" aria-label="Clear background texture">×</button><button type="button" class="button small" id="pickBackgroundTexture">Browse</button></div></label>
+            </div>
+          </section>
+          <section class="card advanced"><details><summary><span><b>Advanced JSON</b><small>Inspect or edit additional quest properties</small></span><span class="mono">{ }</span></summary><textarea id="advancedJson" spellcheck="false"></textarea><div class="advanced-actions"><span id="jsonError"></span><button class="button small" id="applyAdvanced">Apply JSON</button></div></details></section>
+        </div>
+        <aside class="preview-column">
+          <div class="preview-head"><div><span class="eyebrow" id="mapEyebrow">CHAPTER MAP</span><h3 id="mapTitle">Quest dependencies</h3></div><div class="map-controls"><label class="chapter-filter-label" for="graphChapter">Chapter</label><select id="graphChapter" aria-label="Choose chapter for dependency map"></select></div></div>
+          <div class="graph-card"><svg id="graph" viewBox="0 0 520 340" role="img" aria-label="Quest dependency graph"></svg><div class="graph-legend"><span><i class="legend-dot current"></i>Visible quest</span><span><i class="legend-dot hidden"></i>Hidden quest</span></div></div>
+          <div class="preview-head json-head"><div><span class="eyebrow">OUTPUT PREVIEW</span><h3>Generated JSON</h3></div><button id="copyJson" class="text-button">Copy</button></div>
+          <div class="code-card"><div class="code-top"><span><i></i><i></i><i></i></span><span id="outputName">quest.json</span><button id="downloadCurrent" title="Download JSON">?</button></div><pre id="jsonPreview"></pre></div>
+          <div class="format-note"><span>?</span><span>Quest IDs are generated from file names, e.g. <code>quests/intro.json</code> ? <code>questlog:intro</code>.</span></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <dialog id="itemDialog" class="item-dialog"><div class="picker-head"><div><span class="eyebrow">MINECRAFT JAVA 1.21.1 + MODS</span><h2>Choose an item</h2><p>Previews are loaded from your local Images folder</p></div><button class="icon-button" id="closeItemPicker" aria-label="Close">�</button></div><div class="item-categories"><button type="button" class="item-category active" data-category="minecraft"><img src="./Images/grass_block.png" alt="" /><span>Minecraft</span></button><button type="button" class="item-category" data-category="cobblemon"><img src="./Images/cobblemonItems/poke_balls/poke_ball.png" alt="" /><span>Cobblemon</span></button><button type="button" class="item-category" data-category="aquamirae"><img src="./Images/aquamiraeItems/rune_of_the_storm.png" alt="" /><span>Aquamirae</span></button><button type="button" class="item-category" data-category="betternether"><img src="./Images/betternetherItems/nether_ruby.png" alt="" /><span>Better Nether</span></button><button type="button" class="item-category" data-category="aether"><img src="./Images/aetherItems/materials/ambrosium_shard.png" alt="" /><span>Aether</span></button><button type="button" class="item-category" data-category="cobblesafari"><img src="./Images/cobblesafariItems/ticket_safari.png" alt="" /><span>CobbleSafari</span></button></div><label class="search picker-search"><span>?</span><input id="itemSearch" placeholder="Search items or IDs�" /></label><div id="itemStatus" class="item-status">Loading local item catalog�</div><div id="itemGrid" class="item-grid"></div><div class="picker-credit">Examples: <code>minecraft:diamond</code>, <code>cobblemon:potion</code>, <code>aquamirae:rune_of_the_storm</code>, <code>betternether:nether_ruby</code>, <code>aether:ambrosium_shard</code>, and <code>cobblesafari:ticket_safari</code>. Images load from the matching local folders.</div></dialog>
+  <dialog id="entityDialog" class="item-dialog"><div class="picker-head"><div><span class="eyebrow">MINECRAFT JAVA 1.21.1 + MODS</span><h2>Choose an entity</h2><p>Search across Minecraft, Aether, Better Nether, and Aquamirae. You can also enter an entity tag manually.</p></div><button class="icon-button" id="closeEntityPicker" type="button" aria-label="Close">×</button></div><div class="item-categories entity-categories"><button type="button" class="item-category active" data-entity-category="minecraft"><img src="./Images/grass_block.png" alt="" /><span>Minecraft</span></button><button type="button" class="item-category" data-entity-category="aquamirae"><img src="./Images/aquamiraeItems/rune_of_the_storm.png" alt="" /><span>Aquamirae</span></button><button type="button" class="item-category" data-entity-category="betternether"><img src="./Images/betternetherItems/nether_ruby.png" alt="" /><span>Better Nether</span></button><button type="button" class="item-category" data-entity-category="aether"><img src="./Images/aetherItems/materials/ambrosium_shard.png" alt="" /><span>Aether</span></button></div><label class="search picker-search"><span>⌕</span><input id="entitySearch" placeholder="Search mobs or entity IDs..." /></label><div id="entityStatus" class="item-status"></div><div id="entityGrid" class="item-grid"></div></dialog>
+  <dialog id="textureDialog" class="item-dialog"><div class="picker-head"><div><span class="eyebrow">MINECRAFT TEXTURES</span><h2>Choose a background texture</h2><p>Previews are loaded from Images/textures.</p></div><button class="icon-button" id="closeTexturePicker" type="button" aria-label="Close">×</button></div><label class="search picker-search"><span>⌕</span><input id="textureSearch" placeholder="Search textures or resource IDs..." /></label><div id="textureStatus" class="item-status"></div><div id="textureGrid" class="item-grid texture-grid"></div></dialog>
+  <script src="item-catalog.js"></script>
+  <script src="cobblemon-catalog.js"></script>
+  <script src="aquamirae-catalog.js"></script>
+  <script src="betternether-catalog.js"></script>
+  <script src="aether-catalog.js"></script>
+  <script src="cobblesafari-catalog.js"></script>
+  <script src="texture-catalog.js"></script>
+  <script src="app-data.js"></script>
+  <script src="app-items.js"></script>
+  <script src="app-editor.js"></script>
+  <script src="app-graph.js"></script>
+  <script src="app-files.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

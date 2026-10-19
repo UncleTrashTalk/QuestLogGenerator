@@ -1,0 +1,30 @@
+{
+  "title": "I need food",
+  "description": "Love goes through the stomache",
+  "icon": {
+    "item": "minecraft:cooked_beef"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:console_command"
+    }
+  ],
+  "objectives": [
+    {
+      "type": "questlog:item_obtain",
+      "item": "minecraft:bread",
+      "required_amount": 10,
+      "name": "Get the bread"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:item",
+      "item": "minecraft:apple",
+      "count": 1,
+      "auto_claim": true
+    }
+  ],
+  "chapter": "questlog:hungry"
+}

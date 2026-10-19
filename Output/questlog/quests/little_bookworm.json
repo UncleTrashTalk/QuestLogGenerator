@@ -1,0 +1,69 @@
+{
+  "title": "Little bookworm",
+  "description": "Time to get reading",
+  "icon": {
+    "item": "minecraft:book"
+  },
+  "requirements": [
+    {
+      "type": "questlog:quest_complete",
+      "quest": "questlog:qeust_xp_reward"
+    }
+  ],
+  "objectives": [
+    {
+      "type": "questlog:item_obtain",
+      "item": "minecraft:book",
+      "required_amount": 10,
+      "name": "Gather 10 books."
+    }
+  ],
+  "rewards": [
+    {
+      "type": "questlog:random",
+      "roll_count": 1,
+      "empty_weight": 0,
+      "entries": [
+        {
+          "weight": 1,
+          "reward": {
+            "type": "questlog:item",
+            "item": {
+              "id": "minecraft:enchanted_book",
+              "tag": {
+                "StoredEnchantments": [
+                  {
+                    "id": "minecraft:fortune",
+                    "lvl": 3
+                  }
+                ]
+              }
+            },
+            "count": 1,
+            "auto_claim": true
+          }
+        },
+        {
+          "weight": 1,
+          "reward": {
+            "type": "questlog:item",
+            "item": {
+              "id": "minecraft:enchanted_book",
+              "tag": {
+                "StoredEnchantments": [
+                  {
+                    "id": "minecraft:smite",
+                    "lvl": 3
+                  }
+                ]
+              }
+            },
+            "count": 1,
+            "auto_claim": true
+          }
+        }
+      ]
+    }
+  ],
+  "chapter": "questlog:enchanting"
+}

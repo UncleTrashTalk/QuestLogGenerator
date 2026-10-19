@@ -1,0 +1,10 @@
+{
+  "name": "Hungry",
+  "translatable": false,
+  "icon": {
+    "item": "minecraft:book"
+  },
+  "order": 1,
+  "default_chapter": false,
+  "hidden": false
+}
