@@ -152,6 +152,9 @@ $('#addFailure').onclick = () => {
 $('#deleteQuest').onclick = () => {
   const quest = current();
   if (!quest) return;
+  const title = quest.data.title || 'Untitled quest';
+  const fileName = `${quest.fileName || 'quest'}.json`;
+  if (!confirm(`Permanently delete "${title}" (${fileName})?\n\nThis cannot be undone from the editor.`)) return;
   state.quests = state.quests.filter(item => item.key !== quest.key);
   state.selected = state.quests[0]?.key || null;
   persist();
