@@ -1,0 +1,19 @@
+{
+  "title": "Visit biome",
+  "description": "Visit the biomes",
+  "icon": {
+    "item": "minecraft:spyglass"
+  },
+  "requirements": [],
+  "objectives": [
+    {
+      "type": "questlog:biome",
+      "biome": "terralith:jungle_mountains",
+      "required_amount": 1,
+      "name": "Visit a Biome"
+    }
+  ],
+  "rewards": [],
+  "hide_when_completed": true,
+  "chapter": "questlog:main"
+}

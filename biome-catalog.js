@@ -1,5 +1,5 @@
-/* Biome tags available to the biome objective picker. */
-const BIOME_TAGS = `
+/* Supported biome IDs available to the biome objective picker. */
+const BIOME_IDS = `
 terralith:alpha_islands
 terralith:alpha_islands_winter
 terralith:alpine_grove
@@ -200,7 +200,7 @@ function biomeItemIcon(id) {
   return rules.find(([pattern]) => pattern.test(name))?.[1] || 'minecraft:grass_block';
 }
 
-const BIOME_CATALOG = BIOME_TAGS.map(id => {
+const BIOME_CATALOG = BIOME_IDS.map(id => {
   const [category, key] = id.split(':');
   return {
     id,

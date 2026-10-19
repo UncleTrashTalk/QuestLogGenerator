@@ -158,9 +158,15 @@ function renderGraph() {
     const objective = objectives[0];
     const type = objective?.type || '';
     const dimension = type === 'questlog:visit_dimension' ? DIMENSIONS.find(item => item.id === objective.dimension) : null;
-    const biome = type === 'questlog:biome' ? BIOME_CATALOG.find(item => item.id === objective.biome) : null;
-    const targetId = objective?.item?.id || objective?.item || objective?.entity || objective?.block || objective?.stat || objective?.biome;
-    const iconId = dimension?.icon || biome?.icon || (type.startsWith('questlog:item_')
+    const biome = type === 'questlog:visit_biome' ? BIOME_CATALOG.find(item => item.id === objective.biome) : null;
+    const targetId = objective?.item?.id || objective?.item || objective?.entity || objective?.block || objective?.stat || objective?.biome || objective?.structure || objective?.effect || objective?.quest;
+    const iconId = dimension?.icon || biome?.icon || (type === 'questlog:visit_position' ? 'minecraft:compass'
+      : type === 'questlog:effect_added' ? 'minecraft:potion'
+      : type === 'questlog:visit_structure' ? 'minecraft:map'
+      : type === 'questlog:block_interact' ? 'minecraft:lever'
+      : type === 'questlog:unobtainable' ? 'minecraft:barrier'
+      : type === 'questlog:quest_complete' ? 'minecraft:book'
+      : type.startsWith('questlog:item_')
       ? targetId || 'minecraft:paper'
       : type === 'questlog:block_mine' || type === 'questlog:block_place' ? targetId || 'minecraft:stone'
       : type === 'questlog:entity_kill' || type === 'questlog:entity_death' ? 'minecraft:iron_sword'
@@ -174,7 +180,8 @@ function renderGraph() {
     const name = objective?.name || dimension?.label || (target ? `${typeLabel}: ${target}` : typeLabel);
     const objectiveChoices = type === 'questlog:or' ? (objective.objectives || []).map(option => {
       const optionType = option.type || '';
-      const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat || option.dimension;
+      const optionBiome = optionType === 'questlog:visit_biome' ? BIOME_CATALOG.find(item => item.id === option.biome) : null;
+      const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat || option.dimension || option.biome || option.effect || option.structure || option.quest;
       const optionTypeLabel = OBJECTIVES[optionType]?.label || (optionType ? optionType.replace(/^.*:/, '').replace(/[_-]+/g, ' ') : 'Objective');
       const optionTargetLabel = String(optionTarget || '').split(':').pop().replace(/[_-]+/g, ' ');
       const optionName = option.name || (optionTargetLabel ? `${optionTypeLabel}: ${optionTargetLabel}` : optionTypeLabel);
@@ -182,7 +189,7 @@ function renderGraph() {
       const amountAlreadyNamed = optionAmount > 1 && new RegExp(`\\b${optionAmount}\\b`).test(optionName);
       const optionText = `${optionName}${optionAmount > 1 && !amountAlreadyNamed ? ` ×${optionAmount}` : ''}`;
       const optionEntity = ENTITY_CATALOG.find(entity => entity.id === option.entity);
-      const optionIcon = option.item?.id || option.item || optionEntity?.icon || (option.entity?.startsWith('minecraft:') ? `${option.entity}_spawn_egg` : optionType === 'questlog:entity_breed' ? 'minecraft:wheat' : optionType === 'questlog:entity_tame' ? 'minecraft:lead' : option.entity ? 'minecraft:iron_sword' : option.block || (optionType === 'questlog:stat' ? 'minecraft:clock' : 'minecraft:paper'));
+      const optionIcon = optionBiome?.icon || option.item?.id || option.item || optionEntity?.icon || (option.entity?.startsWith('minecraft:') ? `${option.entity}_spawn_egg` : optionType === 'questlog:entity_breed' ? 'minecraft:wheat' : optionType === 'questlog:entity_tame' ? 'minecraft:lead' : option.entity ? 'minecraft:iron_sword' : option.block || (optionType === 'questlog:stat' ? 'minecraft:clock' : optionType === 'questlog:visit_position' ? 'minecraft:compass' : optionType === 'questlog:effect_added' ? 'minecraft:potion' : optionType === 'questlog:visit_structure' ? 'minecraft:map' : optionType === 'questlog:block_interact' ? 'minecraft:lever' : optionType === 'questlog:unobtainable' ? 'minecraft:barrier' : optionType === 'questlog:quest_complete' ? 'minecraft:book' : 'minecraft:paper'));
       return { text: optionText, lines: wrapObjective(optionText), icon: localSprite(optionIcon) };
     }) : [];
     const choiceContentHeight = objectiveChoices.length
@@ -195,7 +202,7 @@ function renderGraph() {
     const tooltip = objectives.map(item => {
       if (item.type === 'questlog:or') {
         const alternatives = (item.objectives || []).map(option => {
-          const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat;
+          const optionTarget = option.item?.id || option.item || option.entity || option.block || option.stat || option.biome || option.effect || option.structure || option.quest;
           const quantity = Number(option.required_amount);
           return `${option.name || OBJECTIVES[option.type]?.label || option.type}${optionTarget ? ` (${optionTarget})` : ''}${quantity > 1 ? ` ×${quantity}` : ''}`;
         });

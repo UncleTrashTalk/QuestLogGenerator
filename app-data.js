@@ -4,9 +4,32 @@
  */
 const STORE = 'questlog-studio-v1';
 
+// Vanilla effects available to the effect-added objective in Minecraft 1.21.1.
+const MINECRAFT_EFFECTS = [
+  ['minecraft:absorption', 'Absorption'], ['minecraft:bad_omen', 'Bad Omen'], ['minecraft:blindness', 'Blindness'],
+  ['minecraft:conduit_power', 'Conduit Power'], ['minecraft:darkness', 'Darkness'], ['minecraft:dolphins_grace', "Dolphin's Grace"],
+  ['minecraft:fire_resistance', 'Fire Resistance'], ['minecraft:glowing', 'Glowing'], ['minecraft:haste', 'Haste'],
+  ['minecraft:health_boost', 'Health Boost'], ['minecraft:hero_of_the_village', 'Hero of the Village'], ['minecraft:hunger', 'Hunger'], ['minecraft:instant_health', 'Instant Health'],
+  ['minecraft:instant_damage', 'Instant Damage'], ['minecraft:invisibility', 'Invisibility'], ['minecraft:jump_boost', 'Jump Boost'],
+  ['minecraft:levitation', 'Levitation'], ['minecraft:luck', 'Luck'], ['minecraft:mining_fatigue', 'Mining Fatigue'],
+  ['minecraft:nausea', 'Nausea'], ['minecraft:night_vision', 'Night Vision'], ['minecraft:oozing', 'Oozing'],
+  ['minecraft:poison', 'Poison'], ['minecraft:raid_omen', 'Raid Omen'], ['minecraft:regeneration', 'Regeneration'],
+  ['minecraft:resistance', 'Resistance'], ['minecraft:saturation', 'Saturation'], ['minecraft:slow_falling', 'Slow Falling'],
+  ['minecraft:slowness', 'Slowness'], ['minecraft:speed', 'Speed'], ['minecraft:strength', 'Strength'],
+  ['minecraft:trial_omen', 'Trial Omen'], ['minecraft:unluck', 'Bad Luck'], ['minecraft:water_breathing', 'Water Breathing'], ['minecraft:weakness', 'Weakness'],
+  ['minecraft:weaving', 'Weaving'], ['minecraft:wind_charged', 'Wind Charged'], ['minecraft:wither', 'Wither'], ['minecraft:infested', 'Infested']
+];
+
 // Objective field definitions drive the objective editor and its graph labels.
 const OBJECTIVES = {
   'questlog:stat': { label: 'Track statistic', fields: [['stat', 'Statistic ID', 'minecraft:play_time'], ['required_amount', 'Required amount', 1, 'number'], ['retroactive', 'Track total statistic (retroactive)', true, 'checkbox'], ['name', 'Display name', 'Reach the statistic']] },
+  'questlog:visit_position': { label: 'Visit position', fields: [['bounds', 'Position bounds (optional)', undefined, 'bounds'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Visit the area']] },
+  'questlog:effect_added': { label: 'Gain effect', fields: [['effect', 'Effect', 'minecraft:speed', 'select', ...MINECRAFT_EFFECTS], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Gain Speed']] },
+  'questlog:visit_structure': { label: 'Visit structure', fields: [['structure', 'Structure ID', 'minecraft:ancient_city'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Visit an Ancient City']] },
+  'questlog:block_interact': { label: 'Interact with block', fields: [['block', 'Block ID or tag', 'minecraft:crafting_table'], ['item', 'Held item (optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Use a Crafting Table']] },
+  'questlog:quest_complete': { label: 'Complete quest', fields: [['quest', 'Quest resource ID', 'questlog:my_other_quest'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Complete another quest']] },
+  'questlog:unobtainable': { label: 'Unobtainable (hidden objective)', fields: [] },
+  'questlog:item_use': { label: 'Use item', fields: [['item', 'Item ID or tag', 'minecraft:ender_pearl'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Use an Ender Pearl']] },
   'questlog:block_mine': { label: 'Mine block', fields: [['block', 'Block ID or tag', 'minecraft:stone'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Mine Stone']] },
   'questlog:block_place': { label: 'Place block', fields: [['block', 'Block ID or tag', 'minecraft:stone'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Place Stone']] },
   'questlog:entity_breed': { label: 'Breed entity', fields: [['entity', 'Entity ID or tag', 'minecraft:cow'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Breed Cows']] },
@@ -17,7 +40,7 @@ const OBJECTIVES = {
   'questlog:item_drop': { label: 'Drop item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Drop a Diamond']] },
   'questlog:item_equip': { label: 'Equip item', fields: [['item', 'Item ID or tag', 'minecraft:iron_helmet'], ['slot', 'Equipment slot (optional)', undefined, 'select', ['', 'Any slot'], ['mainhand', 'Mainhand'], ['offhand', 'Offhand'], ['head', 'Head'], ['chest', 'Chest'], ['legs', 'Legs'], ['feet', 'Feet']], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Equip an Iron Helmet']] },
   'questlog:item_obtain': { label: 'Obtain item', fields: [['item', 'Item ID or tag', 'minecraft:diamond'], ['nbt', 'NBT match (SNBT, optional)', undefined], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Obtain 1 Diamond']] },
-  'questlog:biome': { label: 'Visit biome', fields: [['biome', 'Biome tag', 'minecraft:plains', 'biome'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Visit a Biome']] },
+  'questlog:visit_biome': { label: 'Visit biome', fields: [['biome', 'Biome ID', 'minecraft:plains', 'biome'], ['required_amount', 'Required amount', 1, 'number'], ['name', 'Display name', 'Visit a Biome']] },
   'questlog:or': { label: 'Any one objective', fields: [] }
 };
 const OR_OBJECTIVES = Object.fromEntries(Object.entries(OBJECTIVES).filter(([type]) => type !== 'questlog:or'));
@@ -217,6 +240,11 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(STORE));
     if (saved && Array.isArray(saved.quests) && Array.isArray(saved.chapters)) state = saved;
   } catch { /* Start with a fresh project if browser storage is empty or invalid. */ }
+  const normalizeBiomeObjectives = objectives => (objectives || []).forEach(objective => {
+    if (objective.type === 'questlog:biome') objective.type = 'questlog:visit_biome';
+    if (objective.type === 'questlog:or') normalizeBiomeObjectives(objective.objectives);
+  });
+  state.quests.forEach(quest => normalizeBiomeObjectives(quest.data.objectives));
   if (!state.chapters.length) state.chapters = [{ key: uid(), fileName: 'main', data: { name: 'Main', translatable: false, icon: { item: 'minecraft:grass_block' }, order: 1, default_chapter: true, hidden: false } }];
   if (!state.quests.length) {
     const quest = defaultQuest();

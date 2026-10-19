@@ -2,7 +2,7 @@
   "title": "Quest Random Reward",
   "description": "",
   "icon": {
-    "item": "betternether:netherrack_stalactite"
+    "item": "minecraft:bone"
   },
   "requirements": [
     {
@@ -14,7 +14,7 @@
     {
       "type": "questlog:entity_kill",
       "entity": "minecraft:zombie",
-      "required_amount": 1,
+      "required_amount": 5,
       "name": "Kill Zombies"
     }
   ],

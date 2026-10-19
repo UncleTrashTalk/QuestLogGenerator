@@ -2,7 +2,7 @@
   "title": "Pick your battles",
   "description": "In this quest you get to decide what to do.",
   "icon": {
-    "item": "minecraft:book"
+    "item": "minecraft:stone_sword"
   },
   "requirements": [
     {

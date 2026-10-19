@@ -388,6 +388,13 @@ function bindEnchantmentControls(host) {
 }
 
 // Render one leaf objective inside an OR group with the same item and entity pickers.
+// Render the six optional coordinates that define a visit-position bounding box.
+function renderBoundsFields(bounds = {}, attributes = '') {
+  const coordinates = ['minX', 'minY', 'minZ', 'maxX', 'maxY', 'maxZ'];
+  const fields = coordinates.map(axis => `<label class="field"><span>${axis}</span><input type="number" step="any" data-bounds-axis="${axis}" ${attributes} value="${safe(bounds?.[axis] ?? '')}" placeholder="Unbounded"></label>`).join('');
+  return `<div class="bounds-fields wide">${fields}</div>`;
+}
+
 function renderOrChild(objective, parentIndex, childIndex) {
   const type = OR_OBJECTIVES[objective.type] ? objective.type : Object.keys(OR_OBJECTIVES)[0];
   const config = OR_OBJECTIVES[type];
@@ -417,10 +424,12 @@ function renderOrChild(objective, parentIndex, childIndex) {
       const icon = selectedBiome?.icon || 'minecraft:barrier';
       return `<label class="field ${wide}"><span>${safe(label)}</span><div class="repeat-item-id-control biome-id-control"><img class="biome-preview" src="${safe(localSprite(icon))}" alt="" /><input type="hidden" ${attrs} value="${safe(value)}"><button type="button" class="biome-picker-trigger" data-pick-or-biome="${parentIndex}" data-or-child="${childIndex}" aria-haspopup="dialog"><span class="biome-selected-label"><b>${safe(selectedBiome?.label || 'Unlisted biome')}</b><small>${safe(value)}</small></span><i aria-hidden="true">⌄</i></button></div></label>`;
     }
+    if (kind === 'bounds') return renderBoundsFields(objective.bounds, `data-or-bounds-parent="${parentIndex}" data-or-bounds-child="${childIndex}"`);
     const inputType = kind === 'number' ? 'number' : 'text';
     return `<label class="field ${wide}"><span>${safe(label)}</span><input type="${inputType}" ${attrs} value="${safe(value)}" placeholder="${safe(defaultValue || '')}"></label>`;
   }).join('');
-  return `<div class="or-objective-option"><div class="or-objective-head"><select data-or-type="${parentIndex}" data-or-child="${childIndex}">${typeOptions}</select>${objective.objectives?.length > 2 ? `<button type="button" class="remove-item" data-remove-or="${parentIndex}" data-or-child="${childIndex}" aria-label="Remove alternative">×</button>` : ''}</div><div class="repeat-fields">${fields}</div></div>`;
+  const note = type === 'questlog:unobtainable' ? '<p class="wide unobtainable-note">This objective is hidden in the quest screen and can only be completed by an external trigger.</p>' : '';
+  return `<div class="or-objective-option"><div class="or-objective-head"><select data-or-type="${parentIndex}" data-or-child="${childIndex}">${typeOptions}</select>${objective.objectives?.length > 2 ? `<button type="button" class="remove-item" data-remove-or="${parentIndex}" data-or-child="${childIndex}" aria-label="Remove alternative">×</button>` : ''}</div><div class="repeat-fields">${fields}${note}</div></div>`;
 }
 
 // Render an OR objective and its alternative objectives as a nested form section.
@@ -481,15 +490,17 @@ function renderRepeater(name, items, types) {
       if (key === 'item') {
         const encodedItem = name === 'rewards' && type === 'questlog:item';
         const enchantmentFields = encodedItem && value === ENCHANTED_BOOK_ITEM_ID ? renderBookEnchantmentFields(item, index) : encodedItem ? `<div class="enchant-fields wide" data-enchanted-fields data-enchant-index="${index}" hidden></div>` : '';
-        return `<label class="field ${wide}"><span>${label}</span><div class="repeat-item-id-control"><img class="item-preview" src="${safe(localSprite(value))}" alt="" /><input data-field="${key}" data-list="${name}" data-index="${index}" type="text" value="${safe(value)}" placeholder="${safe(defaultValue)}" /><button type="button" class="button small" data-pick-list="${name}" data-index="${index}">Browse</button></div></label>${enchantmentFields}`;
+        return `<label class="field ${wide}"><span>${label}</span><div class="repeat-item-id-control"><img class="item-preview" src="${safe(localSprite(value || 'minecraft:barrier'))}" alt="" /><input data-field="${key}" data-list="${name}" data-index="${index}" type="text" value="${safe(value)}" placeholder="${safe(defaultValue || '')}" /><button type="button" class="button small" data-pick-list="${name}" data-index="${index}">Browse</button></div></label>${enchantmentFields}`;
       }
+      if (kind === 'bounds') return renderBoundsFields(item.bounds, `data-bounds-list="${name}" data-bounds-index="${index}"`);
       const inputType = kind === 'number' ? 'number' : 'text';
       return `<label class="field ${wide}"><span>${label}</span><input data-field="${key}" data-list="${name}" data-index="${index}" type="${inputType}" value="${safe(value)}" placeholder="${safe(defaultValue)}"></label>`;
     }).join('');
     const options = Object.entries(types).map(([value, option]) =>
       `<option value="${value}" ${value === type ? 'selected' : ''}>${option.label}</option>`
     ).join('');
-    return `<div class="repeat-item"><div class="repeat-top"><select data-kind="${name}" data-index="${index}">${options}</select><button class="remove-item" data-remove="${name}" data-index="${index}">×</button></div><div class="repeat-fields">${fields}</div></div>`;
+    const note = name === 'objectives' && type === 'questlog:unobtainable' ? '<p class="wide unobtainable-note">This objective is hidden in the quest screen and can only be completed by an external trigger.</p>' : '';
+    return `<div class="repeat-item"><div class="repeat-top"><select data-kind="${name}" data-index="${index}">${options}</select><button class="remove-item" data-remove="${name}" data-index="${index}">×</button></div><div class="repeat-fields">${fields}${note}</div></div>`;
   }).join('');
   if (name === 'rewards') bindEnchantmentControls(host);
 
@@ -541,6 +552,14 @@ function renderRepeater(name, items, types) {
     renderRepeater(name, items, types);
     changed();
   });
+  $$(`[data-bounds-list="${name}"]`).forEach(input => input.addEventListener('input', () => {
+    const index = Number(input.dataset.boundsIndex), axis = input.dataset.boundsAxis;
+    const bounds = items[index].bounds || (items[index].bounds = {});
+    if (input.value.trim() && Number.isFinite(Number(input.value))) bounds[axis] = Number(input.value);
+    else delete bounds[axis];
+    if (!Object.keys(bounds).length) delete items[index].bounds;
+    changed();
+  }));
   $$(`[data-list="${name}"]`).forEach(input => {
     const update = () => {
       const index = Number(input.dataset.index), key = input.dataset.field;
@@ -548,7 +567,7 @@ function renderRepeater(name, items, types) {
       else if (input.type === 'number') {
         const number = Number(input.value);
         if (Number.isFinite(number)) items[index][key] = number;
-      } else if ((input.tagName === 'SELECT' && input.value === '') || (key === 'nbt' && !input.value.trim())) delete items[index][key];
+      } else if ((input.tagName === 'SELECT' && input.value === '') || (key === 'nbt' && !input.value.trim()) || (key === 'item' && items[index].type === 'questlog:block_interact' && !input.value.trim())) delete items[index][key];
       else if (key === 'item' && name === 'rewards' && items[index].type === 'questlog:item') setRewardItemId(items[index], input.value.trim());
       else items[index][key] = input.value;
 
@@ -558,7 +577,7 @@ function renderRepeater(name, items, types) {
           image.onerror = () => { image.style.visibility = 'hidden'; };
           image.onload = () => { image.style.visibility = 'visible'; };
           image.style.visibility = 'visible';
-          image.src = localSprite(input.value);
+          image.src = localSprite(input.value || 'minecraft:barrier');
         }
         if (name === 'rewards' && items[index].type === 'questlog:item') syncBookEnchantmentFields(host, items[index], index);
       }
@@ -605,7 +624,7 @@ function renderRepeater(name, items, types) {
         const child = items[parentIndex].objectives[childIndex];
         if (input.type === 'checkbox') child[key] = input.checked;
         else if (input.type === 'number') child[key] = Number(input.value);
-        else if ((input.tagName === 'SELECT' && !input.value) || (key === 'nbt' && !input.value.trim())) delete child[key];
+        else if ((input.tagName === 'SELECT' && !input.value) || (key === 'nbt' && !input.value.trim()) || (key === 'item' && child.type === 'questlog:block_interact' && !input.value.trim())) delete child[key];
         else child[key] = input.value;
         if (key === 'item' || key === 'entity' || key === 'biome') {
           const preview = input.parentElement.querySelector('img');
@@ -627,6 +646,15 @@ function renderRepeater(name, items, types) {
       };
       input.addEventListener(input.type === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input', update);
     });
+    $$('[data-bounds-axis][data-or-bounds-parent]').forEach(input => input.addEventListener('input', () => {
+      const parentIndex = Number(input.dataset.orBoundsParent), childIndex = Number(input.dataset.orBoundsChild);
+      const child = items[parentIndex].objectives[childIndex];
+      const bounds = child.bounds || (child.bounds = {});
+      if (input.value.trim() && Number.isFinite(Number(input.value))) bounds[input.dataset.boundsAxis] = Number(input.value);
+      else delete bounds[input.dataset.boundsAxis];
+      if (!Object.keys(bounds).length) delete child.bounds;
+      changed();
+    }));
     $$('[data-or-type]').forEach(select => select.onchange = () => {
       const parentIndex = Number(select.dataset.orType), childIndex = Number(select.dataset.orChild);
       items[parentIndex].objectives[childIndex] = makeDefault(OR_OBJECTIVES, select.value);

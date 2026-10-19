@@ -23,7 +23,7 @@
     {
       "type": "questlog:item",
       "item": "cobblemon:white_apricorn_seed",
-      "count": 1,
+      "count": 0,
       "auto_claim": true
     }
   ],
