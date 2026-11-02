@@ -333,15 +333,12 @@ async function showPackSpawns() {
   $('#packSpawnsButton').setAttribute('aria-pressed', 'true');
   $$('.pack-pokemon-row').forEach(row => row.classList.remove('active'));
   const details = $('#packPokemonDetails');
-  if (!activePackFile) {
-    details.innerHTML = '<div class="pack-detail-empty">Upload a pack .jar to browse its spawn presets.</div>';
-    return;
-  }
   details.innerHTML = '<div class="pack-detail-empty">Loading spawn presets and Pokémon weights…</div>';
   try {
     const groups = await loadPackSpawnGroups();
     if (version !== packSelectionVersion) return;
-    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">SPAWN BROWSER</span><h2>Spawn presets</h2><small>Percentages compare spawn weights only with Pokémon in the same rarity bucket.</small></div>${renderPackSpawnGroups(groups)}`;
+    const sourceNote = activePackFile ? '' : '<div class="pack-detail-empty">Showing original Cobblemon spawns. Upload a pack to include its additional spawn data.</div>';
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">SPAWN BROWSER</span><h2>Spawn presets</h2><small>Percentages compare spawn weights only with Pokémon in the same rarity bucket.</small></div>${sourceNote}${renderPackSpawnGroups(groups)}`;
   } catch (error) {
     if (version !== packSelectionVersion) return;
     details.innerHTML = `<div class="pack-detail-empty error">${safePokemonName(error instanceof Error ? error.message : 'Could not read spawn data.')}</div>`;
