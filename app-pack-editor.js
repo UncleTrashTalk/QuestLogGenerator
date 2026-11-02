@@ -331,7 +331,7 @@ async function showPackSpawns() {
   const version = ++packSelectionVersion;
   $('#packSpawnsButton').classList.add('active');
   $('#packSpawnsButton').setAttribute('aria-pressed', 'true');
-  $$('.pack-pokemon-row').forEach(row => row.classList.remove('active'));
+  $$('.pack-pokemon-row, .pack-base-pokemon-row').forEach(row => row.classList.remove('active'));
   const details = $('#packPokemonDetails');
   details.innerHTML = '<div class="pack-detail-empty">Loading spawn presets and Pokémon weights…</div>';
   try {
@@ -348,49 +348,68 @@ async function showPackSpawns() {
 async function showPokemonSpawns(texturePath, row) {
   const version = ++packSelectionVersion;
   activePackView = 'pokemon';
+  const baseId = row?.dataset.originalPokemon || '';
+  const baseSpecies = (window.COBBLEMON_ORIGINAL_SPECIES || []).find(species => species.id === baseId);
   $('#packSpawnsButton').classList.remove('active');
   $('#packSpawnsButton').setAttribute('aria-pressed', 'false');
-  $$('.pack-pokemon-row').forEach(item => item.classList.toggle('active', item === row));
+  $$('.pack-pokemon-row, .pack-base-pokemon-row').forEach(item => item.classList.toggle('active', item === row));
   const details = $('#packPokemonDetails');
-  const label = pokemonTextureLabel(texturePath);
-  details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">Looking for this Pokémon's spawn JSON…</div>`;
+  const label = baseSpecies?.name || pokemonTextureLabel(texturePath);
+  details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(baseSpecies?.path || texturePath)}</small></div><div class="pack-detail-empty">Looking for this Pokémon's species and spawn data…</div>`;
   const candidateNames = pokemonSpawnJsonCandidates(texturePath);
   // Packs may contain multiple datapacks, each with a spawn_pool_world folder.
-  const matchingEntries = [...activePackEntries.values()].filter(entry => {
+  const matchingEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)spawn_pool_world\/(?:.*\/)?([^/]+\.json)$/);
     return match && candidateNames.includes(match[1]);
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
   const additionNames = new Set(candidateNames);
-  const additionEntries = [...activePackEntries.values()].filter(entry => {
+  const additionEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)species_additions\/(?:.*\/)?([^/]+\.json)$/);
     return match && additionNames.has(match[1]);
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
-  const speciesEntries = [...activePackEntries.values()].filter(entry => {
+  const speciesEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)species\/(?:.*\/)?([^/]+\.json)$/);
     return match && additionNames.has(match[1]);
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
-  if (!matchingEntries.length && !additionEntries.length && !speciesEntries.length) {
+  if (!baseSpecies && !matchingEntries.length && !additionEntries.length && !speciesEntries.length) {
     if (version !== packSelectionVersion) return;
     details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">No matching spawn or species-addition JSON was found in this JAR.</div>`;
     return;
   }
   try {
-    const records = await Promise.all(matchingEntries.map(async entry => {
-      const record = await readJarJson(activePackFile, entry);
-      const spawns = Array.isArray(record) ? record : Array.isArray(record?.spawns) ? record.spawns : [];
-      return { path: entry.path, spawns, raw: JSON.stringify(record, null, 2) };
-    }));
+    let records;
+    if (baseSpecies) {
+      const grouped = new Map();
+      (window.COBBLEMON_ORIGINAL_SPAWNS || []).filter(spawn => spawn.speciesId === baseId).forEach(spawn => {
+        if (!grouped.has(spawn.source)) grouped.set(spawn.source, []);
+        grouped.get(spawn.source).push(spawn);
+      });
+      records = [...grouped.entries()].map(([path, spawns]) => ({ path, spawns, raw: JSON.stringify({ spawns }, null, 2) }));
+    } else {
+      records = await Promise.all(matchingEntries.map(async entry => {
+        const record = await readJarJson(activePackFile, entry);
+        const spawns = Array.isArray(record) ? record : Array.isArray(record?.spawns) ? record.spawns : [];
+        return { path: entry.path, spawns, raw: JSON.stringify(record, null, 2) };
+      }));
+    }
     const additionRecords = await Promise.all(additionEntries.map(async entry => ({
       path: entry.path,
       data: await readJarJson(activePackFile, entry)
     })));
-    const speciesRecords = await Promise.all(speciesEntries.map(async entry => ({
-      path: entry.path,
-      data: await readJarJson(activePackFile, entry)
-    })));
+    let speciesRecords;
+    if (baseSpecies) {
+      const response = await fetch(`./${baseSpecies.path}`);
+      if (!response.ok) throw new Error(`Could not load original species data (${response.status}).`);
+      speciesRecords = [{ path: baseSpecies.path, data: await response.json() }];
+    } else {
+      speciesRecords = await Promise.all(speciesEntries.map(async entry => ({
+        path: entry.path,
+        data: await readJarJson(activePackFile, entry)
+      })));
+    }
     if (version !== packSelectionVersion) return;
     const spawns = records.flatMap(record => record.spawns.map(spawn => ({ ...spawn, __source: record.path })));
-    const heading = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${speciesEntries.length} species file${speciesEntries.length === 1 ? '' : 's'} · ${matchingEntries.length} spawn file${matchingEntries.length === 1 ? '' : 's'}</small></div>`;
+    const heading = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${speciesRecords.length} species file${speciesRecords.length === 1 ? '' : 's'} · ${records.length} spawn file${records.length === 1 ? '' : 's'}</small></div>`;
     const pokemonFields = speciesRecords.flatMap(record => {
       const baseFields = Object.entries(record.data || {})
         .filter(([key]) => !['moves', 'drops', 'forms'].includes(key.toLowerCase()))
@@ -475,6 +494,23 @@ function renderPokemonPackList(paths) {
   }).join('');
   $$('.pack-pokemon-row').forEach(row => row.onclick = () => showPokemonSpawns(row.dataset.pokemonTexture, row));
 }
+
+// Draw the bundled original Cobblemon species as a separate sidebar list.
+function renderBasePokemonList() {
+  const list = $('#packBasePokemonList');
+  const species = [...(window.COBBLEMON_ORIGINAL_SPECIES || [])].sort((left, right) =>
+    (left.nationalPokedexNumber ?? Number.MAX_SAFE_INTEGER) - (right.nationalPokedexNumber ?? Number.MAX_SAFE_INTEGER) || left.name.localeCompare(right.name)
+  );
+  $('#packBasePokemonCount').textContent = species.length.toLocaleString();
+  if (!species.length) {
+    list.innerHTML = '<div class="pack-empty-list">Original Cobblemon species data could not be loaded.</div>';
+    return;
+  }
+  list.innerHTML = species.map(entry => `<button class="pack-base-pokemon-row" type="button" data-original-pokemon="${safePokemonName(entry.id)}" title="Show base data for ${safePokemonName(entry.name)}"><span class="pack-pokemon-mark" aria-hidden="true"><i></i></span><span class="pack-pokemon-copy"><b>${safePokemonName(entry.name)}</b><small>${entry.nationalPokedexNumber ? `#${String(entry.nationalPokedexNumber).padStart(4, '0')}` : safePokemonName(entry.id)}</small></span></button>`).join('');
+  $$('.pack-base-pokemon-row').forEach(row => row.onclick = () => showPokemonSpawns(`${row.dataset.originalPokemon}.png`, row));
+}
+
+renderBasePokemonList();
 
 $('#packSpawnsButton').addEventListener('click', showPackSpawns);
 
