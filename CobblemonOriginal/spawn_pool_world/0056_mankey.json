@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_hills","#cobblemon:is_jungle"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"mankey-1","level":"6-31","pokemon":"mankey","presets":["natural","treetop"],"spawnablePositionType":"grounded","type":"pokemon","weight":18.0}]}

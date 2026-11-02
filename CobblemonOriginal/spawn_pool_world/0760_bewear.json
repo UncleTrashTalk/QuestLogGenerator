@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_bamboo"],"maxSkyLight":15,"minSkyLight":8},"id":"bewear-1","level":"27-50","pokemon":"bewear","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}

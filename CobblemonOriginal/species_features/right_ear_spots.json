@@ -1,0 +1,1 @@
+{"aspectFormat":"right-ear-spots-{{choice}}","choices":["none","1","2","3","4","5","6"],"default":"random","isAspect":true,"keys":["right_ear_spots"],"type":"choice"}

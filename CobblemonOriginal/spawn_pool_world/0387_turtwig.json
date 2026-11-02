@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"anticondition":{"biomes":["#cobblemon:is_spooky"]},"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_forest"],"maxSkyLight":15,"minSkyLight":8},"id":"turtwig-1","level":"5-32","pokemon":"turtwig","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":30.0}]}

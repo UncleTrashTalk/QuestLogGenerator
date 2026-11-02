@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-sea","choices":["west","east"],"default":"random","isAspect":true,"keys":["sea"],"type":"choice"}

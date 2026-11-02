@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_desert","#cobblemon:is_savanna"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"luxray-1","level":"30-52","pokemon":"luxray","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":0.32}]}

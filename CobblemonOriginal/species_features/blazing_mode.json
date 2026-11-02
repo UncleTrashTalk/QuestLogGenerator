@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-mode","choices":["standard","zen"],"default":"standard","isAspect":true,"keys":["blazing_mode"],"type":"choice"}

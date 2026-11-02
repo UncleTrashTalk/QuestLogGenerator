@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-appliance","choices":["heat","wash","frost","fan","mow"],"default":"none","isAspect":true,"keys":["appliance"],"type":"choice"}

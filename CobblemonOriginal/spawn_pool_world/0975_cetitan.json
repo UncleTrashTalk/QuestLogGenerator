@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_glacial","#cobblemon:is_tundra"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"cetitan-1","level":"28-52","pokemon":"cetitan","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":9.6}]}

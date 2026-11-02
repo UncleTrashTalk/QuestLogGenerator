@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_floral","#cobblemon:is_magical"],"maxSkyLight":15,"minSkyLight":8},"id":"sprigatito-1","level":"5-31","pokemon":"sprigatito","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":60.0}]}

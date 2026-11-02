@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_savanna"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"nidoqueen-1","level":"37-51","pokemon":"nidoqueen","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":0.4}]}

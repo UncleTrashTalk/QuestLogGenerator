@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_lush"],"maxSkyLight":7,"minSkyLight":0},"id":"tyrantrum-1","level":"39-52","pokemon":"tyrantrum","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":40.0}]}

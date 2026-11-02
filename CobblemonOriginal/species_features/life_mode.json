@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-mode","choices":["neutral","active"],"default":"neutral","isAspect":true,"keys":["life_mode"],"type":"choice"}

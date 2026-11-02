@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_hills","#cobblemon:is_temperate"],"isPokeSnack":true,"minY":32},"id":"bunnelby-1","level":"1-24","pokemon":"bunnelby","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":54.0}]}

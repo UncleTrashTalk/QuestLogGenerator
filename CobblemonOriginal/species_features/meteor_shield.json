@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-form","choices":["meteor","core"],"default":"meteor","isAspect":true,"keys":["meteor_shield"],"type":"choice"}

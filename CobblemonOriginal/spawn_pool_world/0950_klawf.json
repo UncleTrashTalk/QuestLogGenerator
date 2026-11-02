@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_badlands"],"maxSkyLight":15,"minSkyLight":8},"id":"klawf-1","level":"20-45","pokemon":"klawf","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":100.0}]}

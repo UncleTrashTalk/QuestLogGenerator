@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_lush"],"maxSkyLight":7,"minSkyLight":0},"id":"aerodactyl-1","level":"27-52","pokemon":"aerodactyl","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":100.0}]}

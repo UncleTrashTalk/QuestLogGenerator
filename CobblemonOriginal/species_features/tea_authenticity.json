@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}","choices":["phony","antique"],"default":"phony","isAspect":true,"keys":["tea_authenticity"],"type":"choice"}

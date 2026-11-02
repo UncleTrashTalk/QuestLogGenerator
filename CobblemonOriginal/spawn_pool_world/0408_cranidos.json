@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_lush"],"maxSkyLight":15,"minSkyLight":8},"id":"cranidos-1","level":"10-35","pokemon":"cranidos","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":60.0}]}

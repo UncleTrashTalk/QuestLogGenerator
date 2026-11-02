@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_mountain"]},"id":"axew-1","level":"7-32","pokemon":"axew","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":30.0,"weightMultiplier":{"condition":{"isPokeSnack":true},"multiplier":2.0}}]}

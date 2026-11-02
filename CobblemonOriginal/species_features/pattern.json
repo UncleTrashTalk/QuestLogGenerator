@@ -1,0 +1,1 @@
+{"aspectFormat":"pattern-{{choice}}","choices":["kanto","johto","hoenn","sinnoh","unova","kalos","alola","galar","hisui","paldea"],"default":"none","isAspect":true,"keys":["pattern"],"type":"choice"}

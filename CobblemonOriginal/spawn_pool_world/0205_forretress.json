@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_taiga"],"maxSkyLight":15,"minSkyLight":8},"id":"forretress-1","level":"31-47","pokemon":"forretress","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}

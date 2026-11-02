@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_bamboo"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"pancham-1","level":"10-35","pokemon":"pancham","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":90.0}]}

@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_desert"],"maxSkyLight":15,"minSkyLight":8},"id":"sandaconda-1","level":"36-51","pokemon":"sandaconda","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}

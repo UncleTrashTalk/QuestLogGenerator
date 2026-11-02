@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_jungle"],"maxSkyLight":15,"minSkyLight":8},"id":"slakoth-1","level":"3-28","pokemon":"slakoth","presets":["natural","treetop","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":18.0}]}

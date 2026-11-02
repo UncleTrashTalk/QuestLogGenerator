@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-style","choices":["single_strike","rapid_strike"],"default":"random","isAspect":true,"keys":["wushu_style"],"type":"choice"}

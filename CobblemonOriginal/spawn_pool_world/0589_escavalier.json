@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_swamp"],"maxSkyLight":15,"minSkyLight":8},"id":"escavalier-1","level":"27-50","pokemon":"escavalier","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":3.0}]}

@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_tundra"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"piloswine-1","level":"33-45","pokemon":"piloswine","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":5.4}]}

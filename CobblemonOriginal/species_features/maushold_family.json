@@ -1,0 +1,1 @@
+{"aspectFormat":"maushold-family-{{choice}}","choices":{"four":99,"three":1},"default":"random","isAspect":true,"keys":["maushold_family"],"type":"weighted_choice"}

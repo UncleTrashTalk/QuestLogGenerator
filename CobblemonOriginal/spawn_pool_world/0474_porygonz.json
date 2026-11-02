@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_overworld"],"neededNearbyBlocks":["cobblemon:pc"]},"id":"porygonz-1","level":"47-54","pokemon":"porygonz","spawnablePositionType":"grounded","type":"pokemon","weight":0.8}]}

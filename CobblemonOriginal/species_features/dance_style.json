@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-style","choices":["baile","pom_pom","pa'u","sensu"],"default":"random","isAspect":true,"keys":["dance_style"],"type":"choice"}

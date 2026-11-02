@@ -1,0 +1,1 @@
+{"aspectFormat":"tree-{{choice}}","choices":["none","oak","birch","darkoak","acacia","azalea","swamp","jungle","spruce","mangrove","cherry","apricorn","crimson","warped","apricorn","saccharine"],"default":"none","isAspect":true,"keys":["tree"],"type":"choice"}

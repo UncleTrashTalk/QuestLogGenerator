@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-trim","choices":["natural","heart","star","diamond","debutante","matron","dandy","la_reine","kabuki","pharaoh","matcha","lavender","cinnamon","crusader","rocker","mourner"],"default":"natural","isAspect":true,"keys":["poodle_trim"],"type":"choice"}

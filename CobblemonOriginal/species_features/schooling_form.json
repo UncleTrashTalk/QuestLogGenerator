@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-form","choices":["solo","school"],"default":"solo","isAspect":true,"keys":["schooling_form"],"type":"choice"}

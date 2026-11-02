@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_jungle","#cobblemon:is_tropical_island"],"maxSkyLight":15,"minSkyLight":8},"id":"kecleon-1","level":"19-44","pokemon":"kecleon","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":100.0}]}

@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_mountain"]},"id":"fraxure-1","level":"38-41","pokemon":"fraxure","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":18.0,"weightMultiplier":{"condition":{"isPokeSnack":true},"multiplier":2.0}}]}

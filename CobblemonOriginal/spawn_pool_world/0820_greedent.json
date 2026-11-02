@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_forest","#cobblemon:is_taiga"],"maxSkyLight":15,"minSkyLight":8},"id":"greedent-1","level":"24-46","pokemon":"greedent","presets":["natural","treetop"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}

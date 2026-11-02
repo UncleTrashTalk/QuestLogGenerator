@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_tundra"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"swinub-1","level":"1-25","pokemon":"swinub","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":54.0}]}

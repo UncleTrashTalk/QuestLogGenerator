@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_desert"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"delphox-1","level":"36-53","pokemon":"delphox","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":2.4}]}

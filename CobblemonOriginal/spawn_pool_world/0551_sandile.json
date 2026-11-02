@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_desert"],"maxSkyLight":15,"minSkyLight":8},"id":"sandile-1","level":"4-29","pokemon":"sandile","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":9.0}]}

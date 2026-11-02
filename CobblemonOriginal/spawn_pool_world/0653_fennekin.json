@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_desert"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"fennekin-1","level":"5-31","pokemon":"fennekin","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":36.0}]}

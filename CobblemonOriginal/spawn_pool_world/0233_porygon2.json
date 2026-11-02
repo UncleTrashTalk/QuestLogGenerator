@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_overworld"],"neededNearbyBlocks":["cobblemon:pc"]},"id":"porygon2-1","level":"35-52","pokemon":"porygon2","spawnablePositionType":"grounded","type":"pokemon","weight":7.2}]}

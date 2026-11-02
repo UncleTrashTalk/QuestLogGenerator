@@ -1,0 +1,1 @@
+{"aspectFormat":"region-bias-{{choice}}","choices":["alola","galar","hisui"],"default":"none","isAspect":true,"keys":["region_bias"],"type":"choice"}

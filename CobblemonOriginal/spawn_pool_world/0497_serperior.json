@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_jungle"],"maxSkyLight":15,"minSkyLight":8},"id":"serperior-1","level":"36-53","pokemon":"serperior","presets":["natural","treetop"],"spawnablePositionType":"grounded","type":"pokemon","weight":4.0}]}

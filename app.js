@@ -28,6 +28,21 @@ function setTheme(theme) {
 setTheme(localStorage.getItem('qlover-theme') === 'dark' ? 'dark' : 'light');
 themeToggle.onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
+// Switch between the quest generator and the empty Cobblemon pack-editor workspace.
+function selectToolPage(page) {
+  const packEditorActive = page === 'cobblemon-pack-editor';
+  $('#quest-generator').hidden = packEditorActive;
+  $('#cobblemon-pack-editor').hidden = !packEditorActive;
+  document.body.classList.toggle('pack-editor-active', packEditorActive);
+  $('#questGeneratorTab').classList.toggle('active', !packEditorActive);
+  $('#questGeneratorTab').setAttribute('aria-selected', String(!packEditorActive));
+  $('#cobblemonPackEditorTab').classList.toggle('active', packEditorActive);
+  $('#cobblemonPackEditorTab').setAttribute('aria-selected', String(packEditorActive));
+  if (!packEditorActive) renderAll();
+}
+$('#questGeneratorTab').onclick = () => selectToolPage('quest-generator');
+$('#cobblemonPackEditorTab').onclick = () => selectToolPage('cobblemon-pack-editor');
+
 // Wire up project navigation, chapter selection, and item icon browsing.
 $('#newQuest').onclick = () => {
   const quest = defaultQuest();

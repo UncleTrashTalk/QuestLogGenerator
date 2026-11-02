@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_lush"],"maxSkyLight":15,"minSkyLight":8},"id":"rampardos-1","level":"30-50","pokemon":"rampardos","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":40.0}]}

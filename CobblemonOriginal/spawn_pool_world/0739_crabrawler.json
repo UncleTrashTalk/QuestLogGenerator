@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_coast"],"maxSkyLight":15,"minSkyLight":8},"id":"crabrawler-1","level":"9-34","pokemon":"crabrawler","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":60.0}]}

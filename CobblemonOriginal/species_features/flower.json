@@ -1,0 +1,1 @@
+{"aspectFormat":"flower-{{choice}}","choices":["red","yellow","orange","blue","white","pink","eternal"],"default":"red","isAspect":true,"keys":["flower"],"needsKey":false,"type":"choice"}

@@ -1,0 +1,1 @@
+{"aspectFormat":"decoration-{{choice}}","choices":["strawberry","berry","love","star","clover","flower","ribbon"],"default":"random","isAspect":true,"keys":["decoration"],"type":"choice"}

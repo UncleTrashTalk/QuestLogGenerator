@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_desert"],"maxSkyLight":15,"minSkyLight":8},"id":"krookodile-1","level":"40-52","pokemon":"krookodile","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":0.1}]}

@@ -1,0 +1,1 @@
+{"aspectFormat":"squawkabilly-color-{{choice}}","choices":["green","blue","yellow","gray"],"default":"random","isAspect":true,"keys":["squawkabilly_color"],"type":"choice"}

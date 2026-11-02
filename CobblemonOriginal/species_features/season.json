@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}","choices":["spring","summer","autumn","winter"],"default":"random","isAspect":true,"keys":["season"],"type":"choice"}

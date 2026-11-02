@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_jungle"],"maxSkyLight":15,"minSkyLight":8},"id":"servine-1","level":"17-41","pokemon":"servine","presets":["natural","treetop"],"spawnablePositionType":"grounded","type":"pokemon","weight":36.0}]}

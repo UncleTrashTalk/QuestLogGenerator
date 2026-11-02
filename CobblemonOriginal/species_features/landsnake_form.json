@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-form","choices":{"three-segment":1,"two-segment":99},"default":"random","isAspect":true,"keys":["landsnake_form"],"type":"weighted_choice"}

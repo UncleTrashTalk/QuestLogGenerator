@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_bamboo"],"maxSkyLight":15,"minSkyLight":8},"id":"stufful-1","level":"9-34","pokemon":"stufful","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":90.0}]}

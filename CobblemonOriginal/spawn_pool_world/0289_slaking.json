@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_jungle"],"maxSkyLight":15,"minSkyLight":8},"id":"slaking-1","level":"36-67","pokemon":"slaking","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":0.2}]}

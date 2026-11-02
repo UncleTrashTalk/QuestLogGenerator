@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_lush"],"maxSkyLight":15,"minSkyLight":8},"id":"bastiodon-1","level":"30-50","pokemon":"bastiodon","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":40.0}]}

@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-forme","choices":["normal","attack","defense","speed"],"default":"normal","isAspect":true,"keys":["meteorite_forme"],"type":"choice"}

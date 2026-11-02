@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"uncommon","condition":{"biomes":["#cobblemon:is_mountain"],"canSeeSky":true,"isRaining":false,"minY":96,"timeRange":"night"},"id":"minior-1","level":"25-50","pokemon":"minior","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":20.0}]}

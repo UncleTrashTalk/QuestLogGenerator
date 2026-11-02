@@ -1,0 +1,1 @@
+{"aspectFormat":"snake-pattern-{{choice}}","choices":["classic","legacy","attack","dark","elusive","heart","speed","sound","angry","cartoon","clown","comedic","crow","grin","ink","modern","rain","scribble","silence","sloth","suspicious","will"],"default":"random","isAspect":true,"keys":["snake_pattern"],"type":"choice"}

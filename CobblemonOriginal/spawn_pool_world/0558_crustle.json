@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_badlands"]},"id":"crustle-1","level":"34-49","pokemon":"crustle","presets":["natural"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}

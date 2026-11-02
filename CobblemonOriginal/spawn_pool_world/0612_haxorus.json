@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"ultra-rare","condition":{"biomes":["#cobblemon:is_mountain"]},"id":"haxorus-1","level":"48-54","pokemon":"haxorus","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":2.0,"weightMultiplier":{"condition":{"isPokeSnack":true},"multiplier":2.0}}]}

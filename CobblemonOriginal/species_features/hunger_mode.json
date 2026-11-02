@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-mode","choices":["full_belly","hangry"],"default":"full_belly","isAspect":true,"keys":["hunger_mode"],"type":"choice"}

@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-core","choices":["red","orange","yellow","green","blue","indigo","violet"],"default":"random","isAspect":true,"keys":["core_color"],"type":"choice"}

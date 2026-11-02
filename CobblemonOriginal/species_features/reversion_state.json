@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}","choices":["standard","primal"],"default":"standard","isAspect":true,"keys":["reversion_state"],"type":"choice"}

@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-drive","choices":["water","electric","fire","ice"],"default":"none","isAspect":true,"keys":["techno_drive"],"type":"choice"}

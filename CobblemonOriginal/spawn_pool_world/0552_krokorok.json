@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_desert"],"maxSkyLight":15,"minSkyLight":8},"id":"krokorok-1","level":"29-35","pokemon":"krokorok","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":0.9}]}

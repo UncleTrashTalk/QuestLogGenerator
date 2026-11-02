@@ -1,0 +1,1 @@
+{"aspectFormat":"{{choice}}-form","choices":["dusk","midday","midnight"],"default":"midday","isAspect":true,"keys":["wolf_form"],"type":"choice"}

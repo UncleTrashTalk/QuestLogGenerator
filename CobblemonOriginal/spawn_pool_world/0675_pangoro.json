@@ -1,0 +1,1 @@
+{"enabled":true,"neededInstalledMods":[],"neededUninstalledMods":[],"spawns":[{"bucket":"common","condition":{"biomes":["#cobblemon:is_bamboo"],"isPokeSnack":true,"maxSkyLight":15,"minSkyLight":8},"id":"pangoro-1","level":"32-50","pokemon":"pangoro","presets":["natural","wild"],"spawnablePositionType":"grounded","type":"pokemon","weight":10.0}]}
