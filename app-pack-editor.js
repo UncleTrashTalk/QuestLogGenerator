@@ -510,6 +510,20 @@ function renderBasePokemonList() {
   $$('.pack-base-pokemon-row').forEach(row => row.onclick = () => showPokemonSpawns(`${row.dataset.originalPokemon}.png`, row));
 }
 
+// Let either long sidebar list collapse without changing the other section.
+function wirePackSidebarCollapse(buttonId, listId, sectionName) {
+  const button = $(`#${buttonId}`);
+  const list = $(`#${listId}`);
+  button.addEventListener('click', () => {
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.setAttribute('aria-label', `${expanded ? 'Expand' : 'Collapse'} ${sectionName} list`);
+    list.hidden = expanded;
+  });
+}
+
+wirePackSidebarCollapse('togglePackPokemonList', 'packPokemonList', 'Pokémon in pack');
+wirePackSidebarCollapse('togglePackBasePokemonList', 'packBasePokemonList', 'Pokémon in base');
 renderBasePokemonList();
 
 $('#packSpawnsButton').addEventListener('click', showPackSpawns);

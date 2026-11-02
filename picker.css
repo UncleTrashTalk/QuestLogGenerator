@@ -39,6 +39,11 @@
 .pack-sidebar-section{min-height:0;margin-top:23px}
 .pack-base-section{margin-top:15px}
 .pack-sidebar-heading{display:flex;align-items:center;justify-content:space-between;margin:0 3px 8px;color:var(--muted);font:500 9px var(--mono);letter-spacing:.1em}
+.pack-sidebar-collapse{width:22px;height:22px;flex:none;display:grid;place-items:center;padding:0;border:1px solid var(--line);border-radius:5px;background:var(--panel2);color:var(--muted);cursor:pointer;transition:color .15s,border-color .15s,transform .15s}
+.pack-sidebar-collapse:hover{border-color:#719363;color:var(--green)}
+.pack-sidebar-collapse svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.pack-sidebar-collapse[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.pack-pokemon-list[hidden]{display:none}
 .pack-sidebar-heading small{color:var(--text);font:10px var(--mono)}
 .pack-pokemon-list{display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 190px);overflow:auto;padding-right:2px}
 .pack-pokemon-row,.pack-base-pokemon-row{width:100%;min-width:0;display:flex;align-items:center;gap:8px;padding:6px 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:background .14s,border-color .14s}
