@@ -14,6 +14,8 @@ let activePackEntries = new Map();
 let packSelectionVersion = 0;
 let activePackView = 'pokemon';
 let activePackSpawnGroups = null;
+let moveCatalogPromise = null;
+const MOVE_TYPE_COLORS = { normal:'#a8a77a', fire:'#ee8130', water:'#6390f0', electric:'#f7d02c', grass:'#7ac74c', ice:'#96d9d6', fighting:'#c22e28', poison:'#a33ea1', ground:'#e2bf65', flying:'#a98ff3', psychic:'#f95587', bug:'#a6b91a', rock:'#b6a136', ghost:'#735797', dragon:'#6f35fc', dark:'#705746', steel:'#b7b7ce', fairy:'#d685ad' };
 const COBBLEMON_BUILTIN_SPAWN_PRESETS = `ancient_city derelict desert_pyramid end_city flowers foliage freshwater gemstones illager_structures jungle_pyramid lava_surface mansion natural nether_fossil nether_structures ocean_monument ocean_ruins pillager_outpost redstone river ruined_portal shipwreck stronghold trail_ruins treetop underlava underwater urban village water_surface wild woodland_mansion`.split(' ');
 const COBBLEMON_BIOME_TAGS = new Set(`apricorns_dense apricorns_normal apricorns_sparse archipelago archipelago_anti autumn bergmite_hisuibiome bergmite_kalosbiome continental continental_anti cubone_alolabiome cubone_kantobiome dartrix_alolabiome dartrix_hisuibiome dense dewott_hisuibiome dewott_unovabiome elegant elegant_anti exeggcute_alolabiome exeggcute_kantobiome fancy forsaken garden garden_anti goomy_hisuibiome goomy_kalosbiome high_plains icy_snow icy_snow_anti inferno is_arid is_badlands is_bamboo is_basalt is_beach is_cave is_cherry_blossom is_coast is_cold is_cold_and_temperate_ocean is_cold_ocean is_crimson is_deep_dark is_deep_ocean is_desert is_dripstone is_end is_fiery is_floral is_forest is_freezing is_freshwater is_frozen is_frozen_ocean is_fungus is_glacial is_grassland is_highlands is_hills is_icy is_island is_jungle is_lukewarm_and_temperate_ocean is_lukewarm_ocean is_lush is_magical is_mars is_mercury is_mirage_island is_moon is_mountain is_mushroom is_ocean is_overgrowth is_overworld is_peak is_plains is_plateau is_quartz is_river is_sandy is_savanna is_shrubland is_sky is_snowy is_snowy_flat is_snowy_forest is_snowy_taiga is_soul_fire is_soul_sand is_space is_spooky is_stony_beach is_swamp is_taiga is_temperate is_temperate_ocean is_thermal is_toxic is_tropical_island is_tundra is_venus is_volcanic is_warm_ocean is_warped jungle jungle_anti koffing_galarbiome koffing_kantobiome marine marine_anti meadow meadow_anti mimejr_galarbiome mimejr_sinnohbiome monsoon monsoon_anti ocean ocean_anti ore_dawn_stone_normal ore_dawn_stone_rare ore_dusk_stone_normal ore_dusk_stone_rare ore_fire_stone_nether ore_fire_stone_normal ore_fire_stone_rare ore_ice_stone_normal ore_ice_stone_rare ore_leaf_stone_normal ore_leaf_stone_rare ore_moon_stone_dripstone ore_moon_stone_normal ore_moon_stone_rare ore_shiny_stone_normal ore_shiny_stone_rare ore_sun_stone_normal ore_sun_stone_rare ore_thunder_stone_normal ore_thunder_stone_rare ore_water_stone_normal ore_water_stone_rare petilil_hisuibiome petilil_unovabiome pikachu_alolabiome pikachu_kantobiome polar quilava_hisuibiome quilava_johtobiome revival_herbs river river_anti rufflet_hisuibiome rufflet_unovabiome saccharine_tree sandstorm sandstorm_anti savanna savanna_anti sparse spring summer sun tundra tundra_anti village_plains_pokecenter void winter`.split(/\s+/));
 
@@ -35,6 +37,35 @@ function biomeTagIconItem(tag) {
 
 function safePokemonName(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
+
+// Load the bundled one-move-per-line catalog and index names without spaces or punctuation.
+async function loadMoveCatalog() {
+  if (!moveCatalogPromise) moveCatalogPromise = fetch('./CobblemonOriginal/CobblemonStuff/moves.json')
+    .then(response => { if (!response.ok) throw new Error('Move catalog could not be loaded.'); return response.text(); })
+    .then(text => new Map(text.split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line)).map(move => [String(move.name).toLowerCase().replace(/[^a-z0-9]/g, ''), move])));
+  return moveCatalogPromise;
+}
+
+// Turn species move tokens into compact cards grouped by level, TM, egg, tutor, or other method.
+async function renderMoveCards(moves) {
+  const catalog = await loadMoveCatalog();
+  const groups = new Map();
+  for (const token of moves) {
+    const [methodRaw, ...nameParts] = String(token).split(':');
+    const method = methodRaw.toLowerCase();
+    const moveId = nameParts.join(':');
+    const groupName = /^\d+$/.test(method) ? `Level ${Number(method)}` : ({ tm:'Technical machine', egg:'Egg moves', tutor:'Move tutor', legacy:'Legacy moves' }[method] || `${method.charAt(0).toUpperCase()}${method.slice(1)} moves`);
+    if (!groups.has(groupName)) groups.set(groupName, []);
+    const move = catalog.get(moveId.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const name = move?.name || moveId.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]/g, ' ');
+    const type = move?.type || 'normal';
+    const category = move?.category || 'status';
+    const typeColor = MOVE_TYPE_COLORS[type] || MOVE_TYPE_COLORS.normal;
+    const image = `./Images/moves/${category}.png`;
+    groups.get(groupName).push(`<article class="pack-move-tile" style="--move-type-color:${typeColor}" title="${safePokemonName(name)} · ${safePokemonName(type)} · ${safePokemonName(category)}"><div class="pack-move-title"><b>${safePokemonName(name)}</b><img src="${image}" alt="${safePokemonName(category)}" title="${safePokemonName(category)} move" onerror="this.hidden=true"></div><div class="pack-move-meta"><span>${safePokemonName(type)}</span><span>${safePokemonName(category)}</span></div></article>`);
+  }
+  return [...groups.entries()].map(([name, cards]) => `<section class="pack-move-method"><h5>${safePokemonName(name)} <small>${cards.length}</small></h5><div class="pack-move-tiles">${cards.join('')}</div></section>`).join('');
 }
 
 function toSafeZipNumber(value, description) {
@@ -464,7 +495,7 @@ async function showPokemonSpawns(texturePath, row) {
       return groups;
     });
     const movesContent = moveGroups.length
-      ? moveGroups.map(group => `<article class="pack-move-card"><header><h4>${safePokemonName(group.name)}</h4><small>${safePokemonName(group.path)}</small></header><div class="pack-move-list">${group.moves.map(move => `<span>${safePokemonName(move)}</span>`).join('')}</div></article>`).join('')
+      ? (await Promise.all(moveGroups.map(async group => `<article class="pack-move-card"><header><h4>${safePokemonName(group.name)}</h4><small>${safePokemonName(group.path)}</small></header>${await renderMoveCards(group.moves)}</article>`))).join('')
       : '<div class="pack-detail-empty">No moves were found in the matching species files.</div>';
     const rawFiles = [
       ...records.map(record => [record.path, record.raw]),
