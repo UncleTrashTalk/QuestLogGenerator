@@ -514,6 +514,7 @@ async function showPokemonSpawns(texturePath, row) {
 // Draw the discovered Pokémon names in the pack sidebar.
 function renderPokemonPackList(paths) {
   const list = $('#packPokemonList');
+  $('#packPokemonCount').dataset.total = String(paths.length);
   $('#packPokemonCount').textContent = paths.length.toLocaleString();
   if (!paths.length) {
     list.innerHTML = '<div class="pack-empty-list">No Pokémon PNGs were found in <code>assets/cobblemon/textures/pokemon</code>.</div>';
@@ -521,9 +522,10 @@ function renderPokemonPackList(paths) {
   }
   list.innerHTML = paths.map(path => {
     const label = pokemonTextureLabel(path);
-    return `<button class="pack-pokemon-row" type="button" data-pokemon-texture="${safePokemonName(path)}" title="Show spawn data for ${safePokemonName(label)}"><span class="pack-pokemon-mark" aria-hidden="true"><i></i></span><span class="pack-pokemon-copy"><b>${safePokemonName(label)}</b><small>${safePokemonName(path)}</small></span></button>`;
+    return `<button class="pack-pokemon-row" type="button" data-pokemon-texture="${safePokemonName(path)}" data-search="${safePokemonName(`${label} ${path}`.toLowerCase())}" title="Show spawn data for ${safePokemonName(label)}"><span class="pack-pokemon-mark" aria-hidden="true"><i></i></span><span class="pack-pokemon-copy"><b>${safePokemonName(label)}</b><small>${safePokemonName(path)}</small></span></button>`;
   }).join('');
   $$('.pack-pokemon-row').forEach(row => row.onclick = () => showPokemonSpawns(row.dataset.pokemonTexture, row));
+  filterPackPokemonList('packPokemonSearch', 'packPokemonList', 'packPokemonCount');
 }
 
 // Draw the bundled original Cobblemon species as a separate sidebar list.
@@ -532,13 +534,30 @@ function renderBasePokemonList() {
   const species = [...(window.COBBLEMON_ORIGINAL_SPECIES || [])].sort((left, right) =>
     (left.nationalPokedexNumber ?? Number.MAX_SAFE_INTEGER) - (right.nationalPokedexNumber ?? Number.MAX_SAFE_INTEGER) || left.name.localeCompare(right.name)
   );
+  $('#packBasePokemonCount').dataset.total = String(species.length);
   $('#packBasePokemonCount').textContent = species.length.toLocaleString();
   if (!species.length) {
     list.innerHTML = '<div class="pack-empty-list">Original Cobblemon species data could not be loaded.</div>';
     return;
   }
-  list.innerHTML = species.map(entry => `<button class="pack-base-pokemon-row" type="button" data-original-pokemon="${safePokemonName(entry.id)}" title="Show base data for ${safePokemonName(entry.name)}"><span class="pack-pokemon-mark" aria-hidden="true"><i></i></span><span class="pack-pokemon-copy"><b>${safePokemonName(entry.name)}</b><small>${entry.nationalPokedexNumber ? `#${String(entry.nationalPokedexNumber).padStart(4, '0')}` : safePokemonName(entry.id)}</small></span></button>`).join('');
+  list.innerHTML = species.map(entry => `<button class="pack-base-pokemon-row" type="button" data-original-pokemon="${safePokemonName(entry.id)}" data-search="${safePokemonName(`${entry.name} ${entry.id} ${entry.nationalPokedexNumber || ''}`.toLowerCase())}" title="Show base data for ${safePokemonName(entry.name)}"><span class="pack-pokemon-mark" aria-hidden="true"><i></i></span><span class="pack-pokemon-copy"><b>${safePokemonName(entry.name)}</b><small>${entry.nationalPokedexNumber ? `#${String(entry.nationalPokedexNumber).padStart(4, '0')}` : safePokemonName(entry.id)}</small></span></button>`).join('');
   $$('.pack-base-pokemon-row').forEach(row => row.onclick = () => showPokemonSpawns(`${row.dataset.originalPokemon}.png`, row));
+  filterPackPokemonList('packBasePokemonSearch', 'packBasePokemonList', 'packBasePokemonCount');
+}
+
+// Filter one sidebar list by display name, resource name, or Pokédex number.
+function filterPackPokemonList(searchId, listId, countId) {
+  const query = $(`#${searchId}`).value.trim().toLowerCase();
+  const rows = $$(`#${listId} .pack-pokemon-row, #${listId} .pack-base-pokemon-row`);
+  let visible = 0;
+  rows.forEach(row => {
+    const matches = !query || row.dataset.search.includes(query);
+    row.hidden = !matches;
+    if (matches) visible++;
+  });
+  const count = $(`#${countId}`);
+  const total = Number(count.dataset.total || rows.length);
+  count.textContent = query ? `${visible}/${total}` : total.toLocaleString();
 }
 
 // Let either long sidebar list collapse without changing the other section.
@@ -555,6 +574,8 @@ function wirePackSidebarCollapse(buttonId, listId, sectionName) {
 
 wirePackSidebarCollapse('togglePackPokemonList', 'packPokemonList', 'Pokémon in pack');
 wirePackSidebarCollapse('togglePackBasePokemonList', 'packBasePokemonList', 'Pokémon in base');
+$('#packPokemonSearch').addEventListener('input', () => filterPackPokemonList('packPokemonSearch', 'packPokemonList', 'packPokemonCount'));
+$('#packBasePokemonSearch').addEventListener('input', () => filterPackPokemonList('packBasePokemonSearch', 'packBasePokemonList', 'packBasePokemonCount'));
 renderBasePokemonList();
 
 $('#packSpawnsButton').addEventListener('click', showPackSpawns);

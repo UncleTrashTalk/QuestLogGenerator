@@ -44,9 +44,13 @@
 .pack-sidebar-collapse svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
 .pack-sidebar-collapse[aria-expanded="false"] svg{transform:rotate(-90deg)}
 .pack-pokemon-list[hidden]{display:none}
+.pack-pokemon-search{display:block;width:100%;height:30px;margin:0 0 5px;padding:0 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);font:10px var(--sans);outline:0}
+.pack-pokemon-search::placeholder{color:var(--muted)}
+.pack-pokemon-search:focus{border-color:#719363;box-shadow:0 0 0 2px #8db59620}
 .pack-sidebar-heading small{color:var(--text);font:10px var(--mono)}
 .pack-pokemon-list{display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 190px);overflow:auto;padding-right:2px}
 .pack-pokemon-row,.pack-base-pokemon-row{width:100%;min-width:0;display:flex;align-items:center;gap:8px;padding:6px 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:background .14s,border-color .14s}
+.pack-pokemon-row[hidden],.pack-base-pokemon-row[hidden]{display:none}
 .pack-pokemon-row:hover,.pack-base-pokemon-row:hover{border-color:var(--line);background:var(--panel2)}
 .pack-pokemon-row.active,.pack-base-pokemon-row.active{border-color:#719363;background:var(--panel2);box-shadow:inset 0 0 0 1px #8db59625}
 .pack-pokemon-mark{width:20px;height:20px;position:relative;display:grid;place-items:center;flex:none;overflow:hidden;border:1px solid #111;border-radius:50%;background:linear-gradient(#d85d59 0 42%,#202820 42% 58%,#e0e7df 58%);box-shadow:0 1px 3px #0005}
@@ -125,7 +129,7 @@
 .pack-move-tile{min-width:0;padding:7px 8px;border:1px solid color-mix(in srgb,var(--move-type-color) 60%,var(--line));border-radius:6px;background:color-mix(in srgb,var(--move-type-color) 19%,var(--panel));box-shadow:inset 3px 0 color-mix(in srgb,var(--move-type-color) 85%,transparent)}
 .pack-move-title{display:flex;align-items:center;justify-content:space-between;gap:7px}
 .pack-move-title b{min-width:0;color:var(--text);font:650 9px var(--display);text-transform:capitalize;overflow-wrap:anywhere}
-.pack-move-title img{width:19px;height:14px;object-fit:contain;flex:none;image-rendering:pixelated}
+.pack-move-title img{width:23px;height:18px;object-fit:contain;flex:none;image-rendering:auto}
 .pack-move-meta{display:flex;gap:6px;margin-top:5px;color:var(--muted);font:7px var(--mono);text-transform:capitalize}
 .pack-move-meta span+span:before{content:'·';margin-right:6px;color:var(--move-type-color)}
 .pack-spawn-preset-list{display:flex;flex-direction:column;gap:7px;margin-top:16px}
