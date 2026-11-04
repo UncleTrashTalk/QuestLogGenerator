@@ -4,10 +4,10 @@ A local first, browser based editor for Questlog quest and chapter JSON files. T
 
 ## Run locally
 
-Open `index.html` directly, or serve this folder with Python:
+Serve the folder over HTTP so browser `fetch()` calls can read the bundled Cobblemon data. On Windows, double-click `Start Local Server.bat`, keep its window open, and visit http://127.0.0.1:8000. To start it manually with Python:
 
 ```powershell
-python -m http.server 8000
+python -m http.server 8000 --bind 127.0.0.1
 ```
 
 Then visit http://localhost:8000. The project autosaves in the browser's local storage. Use **Save project files** to save a `questlog` folder containing separate `quests/<file>.json` and `chapters/<file>.json` files. Browsers that support folder access can write directly to a chosen folder; other browsers download a ZIP with that folder structure. You can also download an individual quest or chapter JSON file. Import individual JSON files with **Import JSON**.

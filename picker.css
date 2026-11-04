@@ -65,10 +65,18 @@
 .pack-editor-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:40px}
 .pack-upload-status{min-width:0;color:var(--muted);font-size:10px;overflow-wrap:anywhere}
 .pack-upload-status.error{color:var(--red)}
+.pack-edit-status{flex:none;padding:5px 8px;border:1px solid var(--line);border-radius:5px;color:var(--green);font:8px var(--mono)}
+.pack-edit-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.pack-edit-section-heading h3{margin:0;color:var(--text);font:650 13px var(--display)}
 .pack-upload-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer}
 .pack-pokemon-details{display:flex;flex-direction:column;gap:14px;padding-top:18px}
 .pack-detail-heading h2{margin:5px 0 3px;color:var(--text);font:700 21px var(--display);letter-spacing:-.04em}
 .pack-detail-heading>small{color:var(--muted);font:9px var(--mono);overflow-wrap:anywhere}
+.pack-detail-provenance{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0}
+.pack-source-badge{display:inline-flex;align-items:center;padding:4px 7px;border:1px solid var(--line);border-radius:999px;font:700 8px var(--mono);letter-spacing:.04em;text-transform:uppercase}
+.pack-source-badge.base{border-color:#577b91;background:#253641;color:#a9d6ee}
+.pack-source-badge.override{border-color:#a27640;background:#42331f;color:#ffd08a;box-shadow:0 0 8px #e8a94c22}
+.pack-source-badge.pack{border-color:#53734e;background:#283a27;color:#b6e2a7}
 .pack-detail-empty{max-width:760px;padding:14px;border:1px dashed var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:10px;line-height:1.55}
 .pack-detail-empty code{color:var(--green);font:9px var(--mono);overflow-wrap:anywhere}
 .pack-detail-empty.error{color:var(--red)}
@@ -112,6 +120,37 @@
 .pack-drop-percent{min-width:50px;color:#c4ed69;text-align:right;font:600 10px var(--mono)}
 .pack-drop-chance{width:100%;margin:5px 0 0}
 .pack-drop-card>p{margin:0;color:var(--muted);font-size:9px}
+.pack-drop-edit{display:flex;flex-direction:column;gap:9px}
+.pack-drop-edit>header{align-items:center;margin-bottom:0}
+.pack-edit-field{min-width:0;display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:8px}
+.pack-edit-field>span{font-weight:600;color:var(--muted)}
+.pack-edit-field input,.pack-edit-field textarea{width:100%;min-width:0;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--text);padding:7px 8px;font:9px var(--mono);outline:0}
+.pack-edit-field input:focus,.pack-edit-field textarea:focus{border-color:#719363;box-shadow:0 0 0 2px #8db59620}
+.pack-drop-edit-item{display:flex;align-items:end;gap:7px}
+.pack-drop-edit-item .pack-drop-icon{align-self:center}
+.pack-drop-edit-item .pack-edit-item-id{flex:1}
+.pack-drop-edit-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:7px;margin:8px 0 0 29px}
+.pack-drop-edit-fields textarea{min-height:34px;resize:vertical}
+.pack-drop-edit-entry{padding:8px 0;border-top:1px solid color-mix(in srgb,var(--line),transparent 30%)}
+.pack-drop-amount-field{width:72px;flex:none}
+.pack-edit-readonly{margin-top:8px!important;font-size:8px!important}
+.pack-spawn-edit-file{display:flex;flex-direction:column;gap:9px;margin-top:9px}
+.pack-spawn-edit-card{background:color-mix(in srgb,var(--panel),var(--green) 4%)}
+.pack-spawn-edit-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.pack-spawn-edit-conditions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:8px;margin-top:9px}
+.pack-spawn-condition{min-width:0;margin:0;padding:8px;border:1px solid var(--line);border-radius:6px}
+.pack-spawn-condition legend{padding:0 5px;color:var(--green);font:600 9px var(--display)}
+.pack-spawn-biome-list{display:flex;flex-direction:column;gap:5px;min-width:0;width:100%}
+.pack-spawn-biome-row{display:flex;align-items:center;gap:5px;min-width:0}
+.pack-spawn-biome-picker{flex:1}
+.pack-spawn-biome-picker .biome-picker-trigger{min-width:0}
+.pack-condition-edit-row{display:flex;align-items:end;gap:5px;padding:4px 0}
+.pack-condition-edit-row .pack-edit-field{flex:1}
+.pack-condition-empty{color:var(--muted);font-size:8px}
+.pack-spawn-add-condition{display:grid;grid-template-columns:minmax(110px,.65fr) minmax(100px,.8fr) minmax(120px,1fr) auto;gap:6px;align-items:end;margin-top:9px}
+.pack-spawn-add-condition input,.pack-spawn-add-condition select{min-width:0;width:100%;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--text);padding:7px 8px;font:9px var(--mono)}
+.pack-edit-field input[type="checkbox"]{width:auto;min-height:28px;accent-color:var(--green)}
+@media(max-width:700px){.pack-spawn-add-condition{grid-template-columns:1fr 1fr}.pack-spawn-add-condition button{grid-column:1/-1}}
 .pack-pokemon-data,.pack-spawn-section,.pack-moves-data{margin-top:15px;padding-top:11px;border-top:1px solid var(--line)}
 .pack-pokemon-data>h3,.pack-spawn-section>h3,.pack-moves-data>h3{margin:0 0 8px;color:var(--text);font:650 13px var(--display)}
 .pack-pokemon-data>dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px;max-width:1200px;margin:0;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}

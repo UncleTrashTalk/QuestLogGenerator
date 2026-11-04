@@ -1,6 +1,6 @@
-/*
+﻿/*
  * Cobblemon pack intake.
- * Reads the JAR ZIP directory locally and lists Pokémon texture files without
+ * Reads the JAR ZIP directory locally and lists PokÃ©mon texture files without
  * extracting or uploading the archive.
  */
 const POKEMON_TEXTURE_PREFIX = 'assets/cobblemon/textures/pokemon/';
@@ -14,6 +14,17 @@ let activePackEntries = new Map();
 let packSelectionVersion = 0;
 let activePackView = 'pokemon';
 let activePackSpawnGroups = null;
+const packEditDocuments = new Map();
+const dirtyPackFiles = new Set();
+const newPackFiles = new Set();
+let packEditMode = { spawn: false, drops: false };
+let activePackPokemonKey = '';
+let activePackPokemonId = '';
+let activePackProvenanceHtml = '';
+let spawnBiomePickerTarget = null;
+let spawnBiomePickerCategory = 'all';
+let spawnBiomeOptionsPromise = null;
+let packEnglishStringsPromise = null;
 let moveCatalogPromise = null;
 const MOVE_TYPE_COLORS = { normal:'#a8a77a', fire:'#ee8130', water:'#6390f0', electric:'#f7d02c', grass:'#7ac74c', ice:'#96d9d6', fighting:'#c22e28', poison:'#a33ea1', ground:'#e2bf65', flying:'#a98ff3', psychic:'#f95587', bug:'#a6b91a', rock:'#b6a136', ghost:'#735797', dragon:'#6f35fc', dark:'#705746', steel:'#b7b7ce', fairy:'#d685ad' };
 const COBBLEMON_BUILTIN_SPAWN_PRESETS = `ancient_city derelict desert_pyramid end_city flowers foliage freshwater gemstones illager_structures jungle_pyramid lava_surface mansion natural nether_fossil nether_structures ocean_monument ocean_ruins pillager_outpost redstone river ruined_portal shipwreck stronghold trail_ruins treetop underlava underwater urban village water_surface wild woodland_mansion`.split(' ');
@@ -63,7 +74,7 @@ async function renderMoveCards(moves) {
     const category = move?.category || 'status';
     const typeColor = MOVE_TYPE_COLORS[type] || MOVE_TYPE_COLORS.normal;
     const image = `./Images/moves/${category}.png`;
-    groups.get(groupName).push(`<article class="pack-move-tile" style="--move-type-color:${typeColor}" title="${safePokemonName(name)} · ${safePokemonName(type)} · ${safePokemonName(category)}"><div class="pack-move-title"><b>${safePokemonName(name)}</b><img src="${image}" alt="${safePokemonName(category)}" title="${safePokemonName(category)} move" onerror="this.hidden=true"></div><div class="pack-move-meta"><span>${safePokemonName(type)}</span><span>${safePokemonName(category)}</span></div></article>`);
+    groups.get(groupName).push(`<article class="pack-move-tile" style="--move-type-color:${typeColor}" title="${safePokemonName(name)} Â· ${safePokemonName(type)} Â· ${safePokemonName(category)}"><div class="pack-move-title"><b>${safePokemonName(name)}</b><img src="${image}" alt="${safePokemonName(category)}" title="${safePokemonName(category)} move" onerror="this.hidden=true"></div><div class="pack-move-meta"><span>${safePokemonName(type)}</span><span>${safePokemonName(category)}</span></div></article>`);
   }
   return [...groups.entries()].map(([name, cards]) => `<section class="pack-move-method"><h5>${safePokemonName(name)} <small>${cards.length}</small></h5><div class="pack-move-tiles">${cards.join('')}</div></section>`).join('');
 }
@@ -180,7 +191,7 @@ function pokemonTextureLabel(path) {
   ).join(' / ');
 }
 
-// Collapse shiny and emissive texture variants into one sidebar Pokémon row.
+// Collapse shiny and emissive texture variants into one sidebar PokÃ©mon row.
 function collapsePokemonTextureVariants(paths) {
   const grouped = new Map();
   paths.forEach(path => {
@@ -219,6 +230,78 @@ function pokemonSpawnJsonCandidates(texturePath) {
   return [...candidates];
 }
 
+// Match a pack texture to a bundled species record so missing pack data can fall back to base data.
+function findBaseSpeciesForTexture(texturePath, preferredId = '') {
+  const species = window.COBBLEMON_ORIGINAL_SPECIES || [];
+  if (preferredId) return species.find(entry => entry.id === preferredId);
+  const byFileName = new Map(species.map(entry => [`${entry.id}.json`, entry]));
+  return pokemonSpawnJsonCandidates(texturePath).map(fileName => byFileName.get(fileName)).find(Boolean);
+}
+
+// Link each species PokÃ©dex translation key to its matching dex_entries record.
+async function resolvePokemonPokedexRows(speciesRecords) {
+  const rows = [];
+  const englishLanguage = await loadPackEnglishStrings();
+  const baseEntries = window.COBBLEMON_ORIGINAL_DEX_ENTRIES || [];
+  const packEntries = [...activePackEntries.values()].filter(entry => /(?:^|\/)dex_entries\/(?:.*\/)?[^/]+\.json$/.test(entry.lowerPath));
+  for (const record of speciesRecords) {
+    const values = Array.isArray(record.data?.pokedex) ? record.data.pokedex : record.data?.pokedex ? [record.data.pokedex] : [];
+    for (const pokedexValue of values) {
+      const value = String(pokedexValue);
+      const match = value.match(/^([^.]+)\.species\.(.+)\.desc$/i);
+      const expectedId = match ? `${match[1]}:${match[2]}`.toLowerCase() : '';
+      const baseEntry = baseEntries.find(entry => String(entry.speciesId || entry.id).toLowerCase() === expectedId);
+      const baseResource = baseEntry ? resourceFolderSuffix(baseEntry.path, 'dex_entries') : '';
+      const filename = `${expectedId.split(':').pop() || ''}.json`;
+      const matchingPackEntries = packEntries.filter(entry => entry.lowerPath.endsWith(`/${filename}`));
+      const packEntry = matchingPackEntries.find(entry => resourceFolderSuffix(entry.lowerPath, 'dex_entries') === baseResource) || matchingPackEntries[0];
+      let linkedId = baseEntry?.speciesId || baseEntry?.id || '';
+      let linkedPath = baseEntry?.path || '';
+      if (packEntry) {
+        try {
+          const dexData = await readEditedPackJson(packEntry);
+          linkedId = dexData.speciesId || dexData.id || linkedId;
+          linkedPath = packEntry.path;
+        } catch { /* Keep the original index link if a pack dex entry is malformed. */ }
+      }
+      const englishText = englishLanguage.strings[value.toLowerCase()];
+      rows.push(['Pokédex text', englishText ? `${value} → ${englishText}` : `${value} (English text not found; ${englishLanguage.filesFound} pack en_us.json file(s) scanned)`]);
+      if (linkedId) rows.push(['Dex entry', linkedPath ? `${linkedId} (${linkedPath})` : linkedId]);
+    }
+  }
+  return rows;
+}
+
+// Read English Cobblemon translations from every matching language folder in the uploaded JAR.
+async function loadPackEnglishStrings() {
+  if (!packEnglishStringsPromise) packEnglishStringsPromise = (async () => {
+    const entries = [...activePackEntries.values()]
+      .filter(entry => /(?:^|\/)assets\/cobblemon\/lang\/(?:.*\/)?en_us\.json$/i.test(String(entry.path).replace(/\\/g, '/')))
+      .sort((left, right) => left.path.localeCompare(right.path));
+    const strings = {};
+    const addStrings = (value, prefix = '') => {
+      if (typeof value === 'string' && prefix) strings[prefix.toLowerCase()] = value;
+      else if (value && typeof value === 'object' && !Array.isArray(value)) {
+        // Some packs wrap a translation in a small object instead of storing a plain string.
+        if (prefix && typeof value.text === 'string') strings[prefix.toLowerCase()] = value.text;
+        else if (prefix && typeof value.value === 'string') strings[prefix.toLowerCase()] = value.value;
+        Object.entries(value).forEach(([key, child]) => addStrings(child, prefix ? `${prefix}.${key}` : key));
+      }
+    };
+    // Load the bundled base Cobblemon translations first; pack language files override these keys.
+    try {
+      const response = await fetch('./CobblemonOriginal/en_us.json');
+      if (response.ok) addStrings(await response.json());
+    } catch { /* Pack translations can still be used if the bundled language file is unavailable. */ }
+    let filesRead = 0;
+    for (const entry of entries) {
+      try { addStrings(await readEditedPackJson(entry)); filesRead += 1; } catch { /* Ignore malformed language files and use remaining entries. */ }
+    }
+    return { strings, filesFound: entries.length, filesRead };
+  })();
+  return packEnglishStringsPromise;
+}
+
 // Inflate one JSON file from the selected JAR entry and parse it locally.
 async function readJarJson(file, entry) {
   const headerBuffer = await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer();
@@ -237,6 +320,62 @@ async function readJarJson(file, entry) {
   } else throw new Error(`The spawn JSON uses unsupported ZIP compression (${entry.compression}).`);
   const jsonText = new TextDecoder('utf-8').decode(jsonBytes).replace(/^\uFEFF/, '');
   return JSON.parse(jsonText);
+}
+
+// Read the latest in-memory draft when a pack file has already been edited.
+async function readEditedPackJson(entry) {
+  if (packEditDocuments.has(entry.lowerPath)) return structuredClone(packEditDocuments.get(entry.lowerPath));
+  return readJarJson(activePackFile, entry);
+}
+
+// Prepare a cloned draft for a source file and keep a small edit count in the toolbar.
+function getPackEditDocument(path, originalData) {
+  const entry = findPackEntry(path);
+  if (!entry) return null;
+  if (!packEditDocuments.has(entry.lowerPath)) packEditDocuments.set(entry.lowerPath, structuredClone(originalData));
+  return { entry, data: packEditDocuments.get(entry.lowerPath) };
+}
+
+function findPackEntry(path) {
+  return [...activePackEntries.values()].find(candidate => candidate.path === path || candidate.lowerPath === String(path).replace(/\\/g, '/').toLowerCase());
+}
+
+// Create a virtual datapack spawn file when the selected PokÃ©mon has no matching spawn source yet.
+function ensureSpawnFileForPokemon(pokemonId) {
+  const fileName = `${pokemonId}.json`;
+  const existing = [...activePackEntries.values()].find(entry => /(?:^|\/)spawn_pool_world\/(?:.*\/)?[^/]+\.json$/i.test(entry.path) && entry.path.toLowerCase().endsWith(`/${fileName}`));
+  if (existing) return existing;
+  const spawnFolder = [...activePackEntries.values()].find(entry => /(?:^|\/)spawn_pool_world\//i.test(entry.path));
+  let prefix = spawnFolder?.path.match(/^(.*\/spawn_pool_world\/)/i)?.[1];
+  if (!prefix) {
+    const dataFolder = [...activePackEntries.values()].find(entry => /(?:^|\/)data\/cobblemon\//i.test(entry.path));
+    prefix = dataFolder?.path.match(/^(.*\/data\/cobblemon\/)/i)?.[1] || 'data/cobblemon/';
+    prefix += 'spawn_pool_world/';
+  }
+  const path = `${prefix}${fileName}`;
+  const entry = { path, lowerPath: path.replace(/\\/g, '/').toLowerCase(), virtual: true };
+  activePackEntries.set(entry.lowerPath, entry);
+  packEditDocuments.set(entry.lowerPath, []);
+  newPackFiles.add(entry.lowerPath);
+  activePackSpawnGroups = null;
+  return entry;
+}
+
+function hasMatchingSpawnFileForPokemon(pokemonId) {
+  const candidates = new Set(pokemonSpawnJsonCandidates(`${pokemonId}.png`));
+  const originals = (window.COBBLEMON_ORIGINAL_SPAWNS || []).filter(spawn => spawn.speciesId === pokemonId);
+  const resources = new Set(originals.map(spawn => resourceFolderSuffix(spawn.source, 'spawn_pool_world')));
+  return [...activePackEntries.values()].some(entry => {
+    const match = entry.lowerPath.match(/(?:^|\/)spawn_pool_world\/(?:.*\/)?([^/]+\.json)$/);
+    return match && (candidates.has(match[1]) || resources.has(resourceFolderSuffix(entry.lowerPath, 'spawn_pool_world')));
+  });
+}
+
+function updatePackEditStatus() {
+  const status = $('#packEditStatus');
+  if (status) status.textContent = dirtyPackFiles.size ? `${dirtyPackFiles.size} edited file${dirtyPackFiles.size === 1 ? '' : 's'} held in this session` : 'No edits yet';
+  activePackSpawnGroups = null;
+  spawnBiomeOptionsPromise = null;
 }
 
 // Format a spawn condition key so it reads well in the details panel.
@@ -276,16 +415,185 @@ function renderSpawnRows(rows) {
   }).join('');
 }
 
-// Show the selected Pokémon's spawn pools in the right-hand workspace.
+// Render visual fields for each spawn entry in an editable pack source file.
+function renderSpawnFileEditor(record, label, pokemonId) {
+  const edit = getPackEditDocument(record.path, record.data);
+  if (!edit) return '';
+  const spawnList = Array.isArray(edit.data) ? edit.data : Array.isArray(edit.data?.spawns) ? edit.data.spawns : [];
+  const cards = spawnList.map((spawn, index) => {
+    const coreFields = ['id', 'pokemon', 'bucket', 'weight', 'level', 'spawnablePositionType', 'presets', 'type'];
+    const extraFields = Object.keys(spawn).filter(key => !coreFields.includes(key) && !['condition', 'anticondition', 'weightMultiplier'].includes(key) && (typeof spawn[key] !== 'object' || Array.isArray(spawn[key])));
+    const fields = [...coreFields, ...extraFields].map(key => {
+      const value = spawn[key];
+      const isNumber = typeof value === 'number';
+      const isBoolean = typeof value === 'boolean';
+      const isArray = Array.isArray(value) || key === 'presets';
+      const fieldValue = Array.isArray(value) ? value.join(', ') : value ?? '';
+      const control = isBoolean
+        ? `<input type="checkbox" ${value ? 'checked' : ''} data-spawn-index="${index}" data-spawn-field="${key}" data-spawn-kind="boolean" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">`
+        : `<input type="${isNumber ? 'number' : 'text'}" ${isNumber ? 'step="any"' : ''} value="${safePokemonName(fieldValue)}" data-spawn-index="${index}" data-spawn-field="${key}" data-spawn-kind="${isArray ? 'array' : isNumber ? 'number' : 'text'}" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">`;
+      return `<label class="pack-edit-field"><span>${safePokemonName(formatSpawnKey(key))}</span>${control}</label>`;
+    }).join('');
+    const conditions = ['condition', 'anticondition', 'weightMultiplier'].map(group => {
+      const value = spawn[group];
+      const leaves = flattenEditableSpawnFields(value && typeof value === 'object' ? value : {}, []);
+      const rows = leaves.map(leaf => {
+        const path = safePokemonName(JSON.stringify([group, ...leaf.path]));
+        const isBiomeArray = leaf.type === 'array' && /^(biome|biomes)$/i.test(leaf.path.at(-1));
+        const isBiomeValue = leaf.type === 'string' && /^biome$/i.test(leaf.path.at(-1));
+        const control = isBiomeArray
+          ? renderPackBiomeArray(leaf.value, path, index, edit.entry.lowerPath)
+          : isBiomeValue
+            ? renderPackBiomePicker(leaf.value, path, index, edit.entry.lowerPath)
+            : leaf.type === 'boolean'
+          ? `<input type="checkbox" ${leaf.value ? 'checked' : ''} data-spawn-index="${index}" data-condition-path="${path}" data-spawn-kind="boolean" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">`
+          : `<input type="${leaf.type === 'number' ? 'number' : 'text'}" ${leaf.type === 'number' ? 'step="any"' : ''} value="${safePokemonName(leaf.value)}" data-spawn-index="${index}" data-condition-path="${path}" data-spawn-kind="${leaf.type}" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">`;
+        return `<div class="pack-condition-edit-row"><label class="pack-edit-field"><span>${safePokemonName(leaf.path.join(' Â· '))}</span>${control}</label><button class="button small danger-quiet" type="button" data-pack-action="remove-condition" data-spawn-index="${index}" data-condition-path="${path}" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" aria-label="Remove condition">Ã—</button></div>`;
+      }).join('');
+      return `<fieldset class="pack-spawn-condition"><legend>${safePokemonName(formatSpawnKey(group))}</legend>${rows || '<small class="pack-condition-empty">No fields yet</small>'}</fieldset>`;
+    }).join('');
+    return `<article class="pack-spawn-card pack-spawn-edit-card"><header><div><h3>Spawn ${index + 1}</h3><small class="spawn-source">${safePokemonName(record.path)}</small></div><button class="button small danger-quiet" type="button" data-pack-action="remove-spawn" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" data-spawn-index="${index}">Remove</button></header><div class="pack-spawn-edit-fields">${fields}</div><div class="pack-spawn-edit-conditions">${conditions}</div><div class="pack-spawn-add-condition"><select aria-label="Condition group" data-new-condition-group><option value="condition">Condition</option><option value="anticondition">Anti condition</option><option value="weightMultiplier">Weight multiplier</option></select><input type="text" placeholder="Field, e.g. biomes" data-new-condition-key><input type="text" placeholder="Value (comma separates lists)" data-new-condition-value><button class="button small" type="button" data-pack-action="add-condition" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" data-spawn-index="${index}">ï¼‹ Add condition</button></div></article>`;
+  }).join('');
+  return `<div class="pack-spawn-edit-file" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">${cards || '<div class="pack-detail-empty">No spawn entries in this file.</div>'}<button class="button small" type="button" data-pack-action="add-spawn" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" data-pokemon-id="${safePokemonName(pokemonId)}">ï¼‹ Add spawn card</button></div>`;
+}
+
+// Flatten condition objects into editable leaf values while retaining their nested key paths.
+function flattenEditableSpawnFields(value, path = [], rows = []) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    Object.entries(value).forEach(([key, child]) => flattenEditableSpawnFields(child, [...path, key], rows));
+  } else if (path.length) {
+    rows.push({ path, value: Array.isArray(value) ? value.join(', ') : value ?? '', type: Array.isArray(value) ? 'array' : typeof value });
+  }
+  return rows;
+}
+
+// Use the shared biome catalog and local item sprites for spawn biome conditions.
+function renderPackBiomePicker(value, conditionPath, spawnIndex, packFile, arrayIndex = null) {
+  const icon = biomeTagIconItem(value) || 'minecraft:redstone';
+  const label = spawnBiomeTagLabel(value);
+  const kind = arrayIndex === null ? 'biome' : 'array-item';
+  const arrayAttribute = arrayIndex === null ? '' : `data-condition-array-index="${arrayIndex}"`;
+  return `<div class="repeat-item-id-control biome-id-control pack-spawn-biome-picker"><img class="biome-preview" src="${safePokemonName(localSprite(icon))}" alt=""><input type="hidden" value="${safePokemonName(value)}" data-spawn-index="${spawnIndex}" data-condition-path="${conditionPath}" data-spawn-kind="${kind}" ${arrayAttribute} data-pack-file="${safePokemonName(packFile)}"><button type="button" class="biome-picker-trigger" data-pack-spawn-biome-picker aria-haspopup="dialog"><span class="biome-selected-label"><b>${safePokemonName(label)}</b><small>${safePokemonName(value)}</small></span><i aria-hidden="true">âŒ„</i></button></div>`;
+}
+
+function spawnBiomeTagLabel(tag) {
+  const resource = String(tag).replace(/^#/, '');
+  const name = resource.includes(':') ? resource.split(':').slice(1).join(':') : resource;
+  return name.split(/[\/_-]+/).filter(Boolean).map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+// Combine built-in Cobblemon condition tags with custom tags found in the uploaded pack's spawn files.
+async function loadSpawnBiomeTagOptions() {
+  if (!spawnBiomeOptionsPromise) spawnBiomeOptionsPromise = (async () => {
+    const supported = new Set([...COBBLEMON_BIOME_TAGS].map(name => `#cobblemon:${name}`));
+    const custom = new Set();
+    const visit = (value, key = '') => {
+      if (Array.isArray(value)) {
+        if (/^biomes?$/i.test(key)) value.forEach(tag => { if (typeof tag === 'string' && tag.startsWith('#')) custom.add(tag); });
+        else value.forEach(child => visit(child));
+      } else if (value && typeof value === 'object') Object.entries(value).forEach(([childKey, child]) => visit(child, childKey));
+    };
+    const entries = [...activePackEntries.values()].filter(entry => /(?:^|\/)spawn_pool_world\/(?:.*\/)?[^/]+\.json$/.test(entry.lowerPath));
+    await Promise.all(entries.map(async entry => {
+      try { visit(await readEditedPackJson(entry)); } catch { /* Skip malformed spawn files while keeping supported tags available. */ }
+    }));
+    const all = new Set([...supported, ...custom]);
+    return [...all].map(id => ({
+      id,
+      category: supported.has(id) ? 'cobblemon' : 'custom',
+      icon: biomeTagIconItem(id) || 'minecraft:redstone',
+      label: spawnBiomeTagLabel(id)
+    })).sort((left, right) => left.category.localeCompare(right.category) || left.label.localeCompare(right.label) || left.id.localeCompare(right.id));
+  })();
+  return spawnBiomeOptionsPromise;
+}
+
+// Open the spawn-specific picker for Cobblemon biome tags, including pack-defined custom tags.
+async function openSpawnBiomePicker(target) {
+  spawnBiomePickerTarget = target;
+  spawnBiomePickerCategory = 'all';
+  $('#spawnBiomeSearch').value = '';
+  $$('[data-spawn-biome-category]').forEach(button => button.classList.toggle('active', button.dataset.spawnBiomeCategory === 'all'));
+  $('#spawnBiomeStatus').textContent = 'Loading spawn biome tagsâ€¦';
+  $('#spawnBiomeDialog').showModal();
+  await renderSpawnBiomeGrid();
+}
+
+async function renderSpawnBiomeGrid() {
+  const tags = await loadSpawnBiomeTagOptions();
+  const query = $('#spawnBiomeSearch').value.trim().toLowerCase();
+  const matched = tags.filter(tag => (query || spawnBiomePickerCategory === 'all' || tag.category === spawnBiomePickerCategory) && (!query || tag.id.toLowerCase().includes(query) || tag.label.toLowerCase().includes(query)));
+  $('#spawnBiomeStatus').textContent = `${matched.length} biome tags${query ? ' across all categories' : ''}`;
+  $('#spawnBiomeGrid').innerHTML = matched.map(tag => `<button class="item-option" type="button" data-spawn-biome-id="${safePokemonName(tag.id)}"><img loading="lazy" src="${safePokemonName(localSprite(tag.icon))}" alt=""><span><b>${safePokemonName(tag.label)}</b><small>${safePokemonName(tag.id)}</small></span></button>`).join('');
+  $$('[data-spawn-biome-id]').forEach(button => button.onclick = () => {
+    if (!spawnBiomePickerTarget) return;
+    const tag = tags.find(item => item.id === button.dataset.spawnBiomeId);
+    spawnBiomePickerTarget.value = tag.id;
+    const control = spawnBiomePickerTarget.parentElement;
+    control.querySelector('.biome-preview').src = localSprite(tag.icon);
+    control.querySelector('.biome-selected-label').innerHTML = `<b>${safePokemonName(tag.label)}</b><small>${safePokemonName(tag.id)}</small>`;
+    spawnBiomePickerTarget.dispatchEvent(new Event('input', { bubbles: true }));
+    $('#spawnBiomeDialog').close();
+  });
+}
+
+// Render each biome in an array as its own icon picker with an add control.
+function renderPackBiomeArray(value, conditionPath, spawnIndex, packFile) {
+  const values = String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+  const controls = values.map((biome, arrayIndex) => `<div class="pack-spawn-biome-row">${renderPackBiomePicker(biome, conditionPath, spawnIndex, packFile, arrayIndex)}<button class="button small danger-quiet" type="button" data-pack-action="remove-biome-value" data-pack-file="${safePokemonName(packFile)}" data-spawn-index="${spawnIndex}" data-condition-path="${conditionPath}" data-condition-array-index="${arrayIndex}" aria-label="Remove biome">Ã—</button></div>`).join('');
+  return `<div class="pack-spawn-biome-list">${controls || '<small class="pack-condition-empty">No biome values yet</small>'}<button class="button small" type="button" data-pack-action="add-biome-value" data-pack-file="${safePokemonName(packFile)}" data-spawn-index="${spawnIndex}" data-condition-path="${conditionPath}">ï¼‹ Add biome</button></div>`;
+}
+
+// Render editable item and quantity fields for drops from files inside the uploaded pack.
+function renderDropEditor(record, label, editing = false) {
+  const data = record.data || {};
+  const edit = editing ? getPackEditDocument(record.path, data) : null;
+  const drops = data.drops && typeof data.drops === 'object' ? data.drops : {};
+  const entries = Array.isArray(drops.entries) ? drops.entries : [];
+  if (!edit) {
+    const rows = entries.map(drop => {
+      const id = typeof drop.item === 'object' ? drop.item.id : drop.item;
+      const image = id && typeof localSprite === 'function' ? localSprite(id) : '';
+      const fields = Object.entries(drop).filter(([key]) => key !== 'item').map(([key, value]) => `${formatSpawnKey(key)}: ${formatSpawnValue(value)}`).join(' Â· ');
+      const percent = Number(drop.percentage);
+      const hasPercent = drop.percentage !== undefined && Number.isFinite(percent);
+      const chance = hasPercent ? `<strong class="pack-drop-percent">${percent.toFixed(1)}%</strong>` : '';
+      const bar = hasPercent ? `<div class="chance-track pack-drop-chance"><i style="width:${Math.max(0, Math.min(100, percent))}%"></i></div>` : '';
+      return `<div class="pack-drop-entry"><div class="pack-drop-row"><div class="pack-drop-item">${image ? `<img class="pack-drop-icon" src="${safePokemonName(image)}" alt="" onerror="this.hidden=true">` : ''}<b>${safePokemonName(id || 'Unknown item')}</b></div><div class="pack-drop-meta">${fields ? `<span>${safePokemonName(fields)}</span>` : ''}${chance}</div></div>${bar}</div>`;
+    }).join('');
+    return `<article class="pack-drop-card"><header><div><h4>${safePokemonName(data.target || label)}</h4><small>${safePokemonName(record.path)}</small></div>${drops.amount !== undefined ? `<span class="pack-drop-amount">${safePokemonName(drops.amount)} roll${Number(drops.amount) === 1 ? '' : 's'}</span>` : ''}</header>${rows || '<p>No individual drops are listed.</p>'}</article>`;
+  }
+  const draftDrops = edit.data.drops && typeof edit.data.drops === 'object' ? edit.data.drops : (edit.data.drops = { amount: 1, entries: [] });
+  if (!Array.isArray(draftDrops.entries)) draftDrops.entries = [];
+  const itemRows = draftDrops.entries.map((drop, index) => {
+    const itemValue = drop.item && typeof drop.item === 'object' ? drop.item.id || '' : drop.item || '';
+    const image = itemValue && typeof localSprite === 'function' ? localSprite(itemValue) : '';
+    const fieldKeys = [...new Set([...Object.keys(drop).filter(key => key !== 'item'), 'quantityRange', 'percentage', 'itemCount'])];
+    const fields = fieldKeys.map(key => {
+      const value = drop[key];
+      const isNumber = typeof value === 'number' || ['percentage', 'itemCount'].includes(key);
+      const isObject = value && typeof value === 'object';
+      const input = isObject
+        ? `<textarea data-drop-index="${index}" data-drop-field="${safePokemonName(key)}" data-drop-kind="json" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">${safePokemonName(JSON.stringify(value))}</textarea>`
+        : `<input type="${isNumber ? 'number' : 'text'}" ${isNumber ? 'step="any"' : ''} value="${safePokemonName(value)}" data-drop-index="${index}" data-drop-field="${safePokemonName(key)}" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">`;
+      return `<label class="pack-edit-field"><span>${safePokemonName(formatSpawnKey(key))}${value === undefined ? ' (optional)' : ''}</span>${input}</label>`;
+    }).join('');
+    return `<div class="pack-drop-edit-entry"><div class="pack-drop-edit-item"><img class="pack-drop-icon" data-drop-preview="${index}" src="${safePokemonName(image)}" alt="" ${image ? '' : 'hidden'}><label class="pack-edit-field pack-edit-item-id"><span>Item</span><input type="text" value="${safePokemonName(itemValue)}" data-drop-index="${index}" data-drop-field="item" data-pack-file="${safePokemonName(edit.entry.lowerPath)}"></label><button class="button small" type="button" data-pack-action="pick-drop-item" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" data-drop-index="${index}">Browse</button><button class="button small danger-quiet" type="button" data-pack-action="remove-drop" data-pack-file="${safePokemonName(edit.entry.lowerPath)}" data-drop-index="${index}" aria-label="Remove drop">Ã—</button></div><div class="pack-drop-edit-fields">${fields}</div></div>`;
+  }).join('');
+  return `<article class="pack-drop-card pack-drop-edit" data-pack-file="${safePokemonName(edit.entry.lowerPath)}"><header><div><h4>${safePokemonName(edit.data.target || label)}</h4><small>${safePokemonName(record.path)}</small></div><label class="pack-edit-field pack-drop-amount-field"><span>Rolls</span><input type="number" min="1" step="1" value="${safePokemonName(draftDrops.amount ?? 1)}" data-drop-amount data-pack-file="${safePokemonName(edit.entry.lowerPath)}"></label></header><div class="pack-drop-edit-list">${itemRows || '<p>No drops yet.</p>'}</div><button class="button small" type="button" data-pack-action="add-drop" data-pack-file="${safePokemonName(edit.entry.lowerPath)}">ï¼‹ Add drop</button></article>`;
+}
+
+// Show the selected PokÃ©mon's spawn pools in the right-hand workspace.
 // Read all pack spawn entries and group them by their referenced preset names.
 async function loadPackSpawnGroups() {
   if (activePackSpawnGroups) return activePackSpawnGroups;
   const groups = new Map(COBBLEMON_BUILTIN_SPAWN_PRESETS.map(name => [name, { name, entries: [], sources: [] }]));
   const spawnFiles = [...activePackEntries.values()].filter(entry => /(?:^|\/)spawn_pool_world\/(?:.*\/)?[^/]+\.json$/.test(entry.lowerPath));
   const presetFiles = [...activePackEntries.values()].filter(entry => /(?:^|\/)spawn_detail_presets\/(?:.*\/)?[^/]+\.json$/.test(entry.lowerPath));
+  const packSpawnResources = new Set(spawnFiles.map(entry => resourceFolderSuffix(entry.lowerPath, 'spawn_pool_world')));
   const records = await Promise.all(spawnFiles.map(async entry => {
     try {
-      const json = await readJarJson(activePackFile, entry);
+      const json = await readEditedPackJson(entry);
       return { path: entry.path, spawns: Array.isArray(json) ? json : Array.isArray(json?.spawns) ? json.spawns : [] };
     } catch (error) {
       return { path: entry.path, spawns: [], error };
@@ -296,16 +604,16 @@ async function loadPackSpawnGroups() {
     presetNames.forEach(name => {
       const preset = String(name);
       if (!groups.has(preset)) groups.set(preset, { name: preset, entries: [], sources: [] });
-      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown Pokémon'), weight: Number(spawn.weight) || 0, level: spawn.level, bucket: spawn.bucket, path: record.path });
+      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown PokÃ©mon'), weight: Number(spawn.weight) || 0, level: spawn.level, bucket: spawn.bucket, path: record.path });
     });
   }));
   // Add vanilla Cobblemon spawn entries without adding them to the uploaded-pack sidebar.
-  (window.COBBLEMON_ORIGINAL_SPAWNS || []).forEach(spawn => {
+  (window.COBBLEMON_ORIGINAL_SPAWNS || []).filter(spawn => !packSpawnResources.has(resourceFolderSuffix(spawn.source, 'spawn_pool_world'))).forEach(spawn => {
     const presetNames = Array.isArray(spawn.presets) ? spawn.presets : typeof spawn.presets === 'string' ? [spawn.presets] : [];
     presetNames.forEach(name => {
       const preset = String(name);
       if (!groups.has(preset)) groups.set(preset, { name: preset, entries: [], sources: [] });
-      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown Pokémon'), weight: Number(spawn.weight) || 0, bucket: spawn.bucket || 'common', path: 'CobblemonOriginal' });
+      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown PokÃ©mon'), weight: Number(spawn.weight) || 0, bucket: spawn.bucket || 'common', path: 'CobblemonOriginal' });
     });
   });
   presetFiles.forEach(entry => {
@@ -323,7 +631,25 @@ function titleCasePokemon(value) {
   return value.replace(/[_-]+/g, ' ').replace(/\b\p{L}/gu, character => character.toUpperCase());
 }
 
-// Render collapsible preset groups with each Pokémon's share of total spawn weight.
+// Get the path inside a resource folder so matching pack files can shadow bundled data.
+function resourceFolderSuffix(path, folderName) {
+  const normalized = String(path).replace(/\\/g, '/').toLowerCase();
+  const marker = `/${folderName.toLowerCase()}/`;
+  const index = normalized.lastIndexOf(marker);
+  return index < 0 ? '' : normalized.slice(index + marker.length);
+}
+
+// Label each spawn card by its source, distinguishing pack additions from base-file overrides.
+function spawnSourceBadge(path) {
+  if (String(path).toLowerCase().startsWith('cobblemonoriginal/')) return '<span class="pack-source-badge base">Provided by base</span>';
+  const resource = resourceFolderSuffix(path, 'spawn_pool_world');
+  const overridesBase = (window.COBBLEMON_ORIGINAL_SPAWNS || []).some(spawn => resourceFolderSuffix(spawn.source, 'spawn_pool_world') === resource);
+  return overridesBase
+    ? '<span class="pack-source-badge override">Overrides base</span>'
+    : '<span class="pack-source-badge pack">From pack</span>';
+}
+
+// Render collapsible preset groups with each PokÃ©mon's share of total spawn weight.
 function renderPackSpawnGroups(groups) {
   return `<div class="pack-spawn-preset-list">${groups.map(group => {
     const rarityGroups = new Map();
@@ -345,31 +671,35 @@ function renderPackSpawnGroups(groups) {
       ? orderedRarities.map(([rarity, totals]) => {
         const totalWeight = [...totals.values()].reduce((sum, weight) => sum + weight, 0);
         const rows = [...totals.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
-        return `<section class="pack-rarity-group"><header><h4>${safePokemonName(titleCasePokemon(rarity))}</h4><small>${rows.length} Pokémon</small></header><div class="pack-preset-pokemon-list">${rows.map(([pokemon, weight]) => {
+        return `<section class="pack-rarity-group"><header><h4>${safePokemonName(titleCasePokemon(rarity))}</h4><small>${rows.length} PokÃ©mon</small></header><div class="pack-preset-pokemon-list">${rows.map(([pokemon, weight]) => {
           const percent = totalWeight ? weight / totalWeight * 100 : 0;
           return `<div class="pack-preset-pokemon"><div class="pack-preset-pokemon-head"><b>${safePokemonName(titleCasePokemon(pokemon))}</b><strong>${percent.toFixed(1)}%</strong></div><div class="chance-track"><i style="width:${percent}%"></i></div></div>`;
         }).join('')}</div></section>`;
       }).join('')
-      : '<div class="pack-detail-empty">No Pokémon in this preset in the uploaded pack.</div>';
+      : '<div class="pack-detail-empty">No PokÃ©mon in this preset in the uploaded pack.</div>';
     const sourceNote = group.sources.length ? `<small class="pack-preset-source">Custom definition: ${group.sources.map(safePokemonName).join(', ')}</small>` : '';
-    return `<details class="pack-spawn-preset"><summary><span>${safePokemonName(titleCasePokemon(group.name))}<code>${safePokemonName(group.name)}</code></span><small>${pokemonCount} Pokémon</small></summary>${sourceNote}${content}</details>`;
+    return `<details class="pack-spawn-preset"><summary><span>${safePokemonName(titleCasePokemon(group.name))}<code>${safePokemonName(group.name)}</code></span><small>${pokemonCount} PokÃ©mon</small></summary>${sourceNote}${content}</details>`;
   }).join('')}</div>`;
 }
 
 // Switch the Pack Editor workspace to its preset-based spawn browser.
 async function showPackSpawns() {
   activePackView = 'spawns';
+  activePackProvenanceHtml = '';
+  activePackPokemonKey = '';
+  activePackPokemonId = '';
+  packEditMode = { spawn: false, drops: false };
   const version = ++packSelectionVersion;
   $('#packSpawnsButton').classList.add('active');
   $('#packSpawnsButton').setAttribute('aria-pressed', 'true');
   $$('.pack-pokemon-row, .pack-base-pokemon-row').forEach(row => row.classList.remove('active'));
   const details = $('#packPokemonDetails');
-  details.innerHTML = '<div class="pack-detail-empty">Loading spawn presets and Pokémon weights…</div>';
+  details.innerHTML = '<div class="pack-detail-empty">Loading spawn presets and PokÃ©mon weightsâ€¦</div>';
   try {
     const groups = await loadPackSpawnGroups();
     if (version !== packSelectionVersion) return;
     const sourceNote = activePackFile ? '' : '<div class="pack-detail-empty">Showing original Cobblemon spawns. Upload a pack to include its additional spawn data.</div>';
-    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">SPAWN BROWSER</span><h2>Spawn presets</h2><small>Percentages compare spawn weights only with Pokémon in the same rarity bucket.</small></div>${sourceNote}${renderPackSpawnGroups(groups)}`;
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">SPAWN BROWSER</span><h2>Spawn presets</h2><small>Percentages compare spawn weights only with PokÃ©mon in the same rarity bucket.</small></div>${sourceNote}${renderPackSpawnGroups(groups)}`;
   } catch (error) {
     if (version !== packSelectionVersion) return;
     details.innerHTML = `<div class="pack-detail-empty error">${safePokemonName(error instanceof Error ? error.message : 'Could not read spawn data.')}</div>`;
@@ -380,79 +710,111 @@ async function showPokemonSpawns(texturePath, row) {
   const version = ++packSelectionVersion;
   activePackView = 'pokemon';
   const baseId = row?.dataset.originalPokemon || '';
-  const baseSpecies = (window.COBBLEMON_ORIGINAL_SPECIES || []).find(species => species.id === baseId);
+  activePackProvenanceHtml = '';
+  const candidateNames = pokemonSpawnJsonCandidates(texturePath);
+  const selectionKey = baseId || row?.dataset.pokemonTexture || texturePath;
+  if (selectionKey !== activePackPokemonKey) packEditMode = { spawn: false, drops: false };
+  activePackPokemonKey = selectionKey;
+  const baseSpecies = findBaseSpeciesForTexture(texturePath, baseId);
+  activePackPokemonId = (baseSpecies?.id || texturePath.replace(/\.png$/i, '').split('/').pop()).toLowerCase();
   $('#packSpawnsButton').classList.remove('active');
   $('#packSpawnsButton').setAttribute('aria-pressed', 'false');
   $$('.pack-pokemon-row, .pack-base-pokemon-row').forEach(item => item.classList.toggle('active', item === row));
   const details = $('#packPokemonDetails');
   const label = baseSpecies?.name || pokemonTextureLabel(texturePath);
-  details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(baseSpecies?.path || texturePath)}</small></div><div class="pack-detail-empty">Looking for this Pokémon's species and spawn data…</div>`;
-  const candidateNames = pokemonSpawnJsonCandidates(texturePath);
+  details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÃ‰MON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(baseSpecies?.path || texturePath)}</small></div><div class="pack-detail-empty">Looking for this PokÃ©mon's species and spawn dataâ€¦</div>`;
+  const originalSpawns = baseSpecies ? (window.COBBLEMON_ORIGINAL_SPAWNS || []).filter(spawn => spawn.speciesId === baseSpecies.id) : [];
+  const originalSpawnResources = new Set(originalSpawns.map(spawn => resourceFolderSuffix(spawn.source, 'spawn_pool_world')));
   // Packs may contain multiple datapacks, each with a spawn_pool_world folder.
-  const matchingEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
+  const matchingEntries = [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)spawn_pool_world\/(?:.*\/)?([^/]+\.json)$/);
-    return match && candidateNames.includes(match[1]);
+    return match && (candidateNames.includes(match[1]) || originalSpawnResources.has(resourceFolderSuffix(entry.lowerPath, 'spawn_pool_world')));
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
   const additionNames = new Set(candidateNames);
-  const additionEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
+  const additionEntries = [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)species_additions\/(?:.*\/)?([^/]+\.json)$/);
     return match && additionNames.has(match[1]);
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
-  const speciesEntries = baseSpecies ? [] : [...activePackEntries.values()].filter(entry => {
+  const baseSpeciesResource = baseSpecies ? resourceFolderSuffix(baseSpecies.path, 'species') : '';
+  const speciesEntries = [...activePackEntries.values()].filter(entry => {
     const match = entry.lowerPath.match(/(?:^|\/)species\/(?:.*\/)?([^/]+\.json)$/);
-    return match && additionNames.has(match[1]);
+    return match && (additionNames.has(match[1]) || resourceFolderSuffix(entry.lowerPath, 'species') === baseSpeciesResource);
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
-  if (!baseSpecies && !matchingEntries.length && !additionEntries.length && !speciesEntries.length) {
+  if (!baseSpecies && !matchingEntries.length && !additionEntries.length && !speciesEntries.length && !activePackFile) {
     if (version !== packSelectionVersion) return;
-    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">No matching spawn or species-addition JSON was found in this JAR.</div>`;
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÃ‰MON DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">No matching spawn or species-addition JSON was found in this JAR.</div>`;
     return;
   }
   try {
     let records;
     if (baseSpecies) {
       const grouped = new Map();
-      (window.COBBLEMON_ORIGINAL_SPAWNS || []).filter(spawn => spawn.speciesId === baseId).forEach(spawn => {
+      originalSpawns.filter(spawn => !matchingEntries.some(entry => resourceFolderSuffix(entry.lowerPath, 'spawn_pool_world') === resourceFolderSuffix(spawn.source, 'spawn_pool_world'))).forEach(spawn => {
         if (!grouped.has(spawn.source)) grouped.set(spawn.source, []);
         grouped.get(spawn.source).push(spawn);
       });
-      records = [...grouped.entries()].map(([path, spawns]) => ({ path, spawns, raw: JSON.stringify({ spawns }, null, 2) }));
+      const originalRecords = [...grouped.entries()].map(([path, spawns]) => ({ path, spawns, raw: JSON.stringify({ spawns }, null, 2) }));
+      const packRecords = await Promise.all(matchingEntries.map(async entry => {
+        const record = await readEditedPackJson(entry);
+        const spawns = Array.isArray(record) ? record : Array.isArray(record?.spawns) ? record.spawns : [];
+        return { path: entry.path, spawns, raw: JSON.stringify(record, null, 2), data: record };
+      }));
+      records = [...originalRecords, ...packRecords];
     } else {
       records = await Promise.all(matchingEntries.map(async entry => {
-        const record = await readJarJson(activePackFile, entry);
+        const record = await readEditedPackJson(entry);
         const spawns = Array.isArray(record) ? record : Array.isArray(record?.spawns) ? record.spawns : [];
-        return { path: entry.path, spawns, raw: JSON.stringify(record, null, 2) };
+        return { path: entry.path, spawns, raw: JSON.stringify(record, null, 2), data: record };
       }));
     }
     const additionRecords = await Promise.all(additionEntries.map(async entry => ({
       path: entry.path,
-      data: await readJarJson(activePackFile, entry)
+      data: await readEditedPackJson(entry)
     })));
     let speciesRecords;
     if (baseSpecies) {
-      const response = await fetch(`./${baseSpecies.path}`);
-      if (!response.ok) throw new Error(`Could not load original species data (${response.status}).`);
-      speciesRecords = [{ path: baseSpecies.path, data: await response.json() }];
+      const override = speciesEntries.filter(entry => resourceFolderSuffix(entry.lowerPath, 'species') === baseSpeciesResource);
+      if (override.length) {
+        speciesRecords = await Promise.all(override.map(async entry => ({ path: entry.path, data: await readEditedPackJson(entry) })));
+      } else {
+        const response = await fetch(`./${baseSpecies.path}`);
+        if (!response.ok) throw new Error(`Could not load original species data (${response.status}).`);
+        speciesRecords = [{ path: baseSpecies.path, data: await response.json() }];
+      }
     } else {
       speciesRecords = await Promise.all(speciesEntries.map(async entry => ({
         path: entry.path,
-        data: await readJarJson(activePackFile, entry)
+        data: await readEditedPackJson(entry)
       })));
     }
     if (version !== packSelectionVersion) return;
     const spawns = records.flatMap(record => record.spawns.map(spawn => ({ ...spawn, __source: record.path })));
-    const heading = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${speciesRecords.length} species file${speciesRecords.length === 1 ? '' : 's'} · ${records.length} spawn file${records.length === 1 ? '' : 's'}</small></div>`;
+    const heading = `<div class="pack-detail-heading"><span class="eyebrow">POKÃ‰MON DATA</span><h2>${safePokemonName(label)}</h2><small>${speciesRecords.length} species file${speciesRecords.length === 1 ? '' : 's'} Â· ${records.length} spawn file${records.length === 1 ? '' : 's'}</small></div>`;
+    const hasPackSpeciesOverride = !!baseSpecies && speciesEntries.some(entry => resourceFolderSuffix(entry.lowerPath, 'species') === baseSpeciesResource);
+    const hasPackSpawnOverride = !!baseSpecies && matchingEntries.some(entry => originalSpawnResources.has(resourceFolderSuffix(entry.lowerPath, 'spawn_pool_world')));
+    const hasBaseData = speciesRecords.some(record => record.path.startsWith('CobblemonOriginal/')) || records.some(record => record.path.startsWith('CobblemonOriginal/'));
+    const hasPackData = speciesRecords.some(record => !record.path.startsWith('CobblemonOriginal/')) || records.some(record => !record.path.startsWith('CobblemonOriginal/')) || additionRecords.length > 0;
+    activePackProvenanceHtml = [
+      hasBaseData ? '<span class="pack-source-badge base">Provided by base</span>' : '',
+      hasPackSpeciesOverride || hasPackSpawnOverride ? '<span class="pack-source-badge override">Overrides base</span>' : '',
+      hasPackData && !hasPackSpeciesOverride && !hasPackSpawnOverride ? '<span class="pack-source-badge pack">Pack data</span>' : ''
+    ].filter(Boolean).join('');
+    const pokedexRows = await resolvePokemonPokedexRows(speciesRecords);
     const pokemonFields = speciesRecords.flatMap(record => {
       const baseFields = Object.entries(record.data || {})
-        .filter(([key]) => !['moves', 'drops', 'forms'].includes(key.toLowerCase()))
+        .filter(([key]) => !['moves', 'drops', 'forms', 'pokedex'].includes(key.toLowerCase()))
         .flatMap(([key, value]) => flattenSpawnConditions(value, key));
       const forms = Array.isArray(record.data?.forms) ? record.data.forms.map(form => form.name).filter(Boolean) : [];
       if (forms.length) baseFields.push(['Forms', formatSpawnValue(forms)]);
       return baseFields;
-    });
+    }).concat(pokedexRows);
     const pokemonContent = pokemonFields.length
-      ? `<section class="pack-pokemon-data"><h3>Pokémon data</h3><dl>${renderSpawnRows(pokemonFields)}</dl></section>`
-      : '<section class="pack-pokemon-data"><h3>Pokémon data</h3><div class="pack-detail-empty">No generic species data was found.</div></section>';
-    const cards = spawns.map((spawn, index) => {
+      ? `<section class="pack-pokemon-data"><h3>PokÃ©mon data</h3><dl>${renderSpawnRows(pokemonFields)}</dl></section>`
+      : '<section class="pack-pokemon-data"><h3>PokÃ©mon data</h3><div class="pack-detail-empty">No generic species data was found.</div></section>';
+    const editableSpawnRecords = records.filter(record => findPackEntry(record.path));
+    const editableSpawnPaths = new Set(editableSpawnRecords.map(record => record.path));
+    const visibleSpawns = packEditMode.spawn ? spawns.filter(spawn => !editableSpawnPaths.has(spawn.__source)) : spawns;
+    const cards = visibleSpawns.map((spawn, index) => {
       const facts = [
         ['Level', spawn.level], ['Rarity', spawn.bucket], ['Position', spawn.spawnablePositionType],
         ['Presets', spawn.presets], ['Weight', spawn.weight]
@@ -460,37 +822,22 @@ async function showPokemonSpawns(texturePath, row) {
       const conditions = flattenSpawnConditions(spawn.condition || {});
       const extraConditions = spawn.weightMultiplier ? flattenSpawnConditions(spawn.weightMultiplier, 'Weight multiplier') : [];
       const conditionContent = [...conditions, ...extraConditions];
-      return `<article class="pack-spawn-card"><header><div><h3>${safePokemonName(spawn.pokemon || label)}</h3><small>Spawn entry ${index + 1}${spawn.bucket ? ` · ${safePokemonName(spawn.bucket)}` : ''}</small><small class="spawn-source">${safePokemonName(spawn.__source)}</small></div></header>${facts.length ? `<dl class="spawn-facts">${renderSpawnRows(facts)}</dl>` : ''}<div class="spawn-conditions"><h4>Where and when</h4>${conditionContent.length ? `<dl>${renderSpawnRows(conditionContent)}</dl>` : '<p>No additional conditions are listed.</p>'}</div></article>`;
+      return `<article class="pack-spawn-card"><header><div><h3>${safePokemonName(spawn.pokemon || label)}</h3><small>Spawn entry ${index + 1}${spawn.bucket ? ` Â· ${safePokemonName(spawn.bucket)}` : ''}</small><small class="spawn-source">${safePokemonName(spawn.__source)}</small></div></header>${facts.length ? `<dl class="spawn-facts">${renderSpawnRows(facts)}</dl>` : ''}<div class="spawn-conditions"><h4>Where and when</h4>${conditionContent.length ? `<dl>${renderSpawnRows(conditionContent)}</dl>` : '<p>No additional conditions are listed.</p>'}</div></article>`;
     }).join('');
-    const spawnContent = spawns.length
-      ? `<div class="pack-spawn-list">${cards}</div>`
-      : '<div class="pack-detail-empty">No matching spawn data was found.</div>';
-    const dropRecords = [...additionRecords, ...speciesRecords].filter(record => record.data?.drops && typeof record.data.drops === 'object');
+    const visualSpawnEditors = packEditMode.spawn
+      ? editableSpawnRecords.map(record => renderSpawnFileEditor(record, label, activePackPokemonId)).join('')
+      : '';
+    const spawnContent = `${cards ? `<div class="pack-spawn-list">${cards}</div>` : ''}${visualSpawnEditors}${!cards && !visualSpawnEditors ? '<div class="pack-detail-empty">No matching spawn data was found.</div>' : ''}`;
+    const dropRecords = [...additionRecords, ...speciesRecords].filter(record => record.data?.drops || findPackEntry(record.path));
+    const editableDropRecords = dropRecords.filter(record => findPackEntry(record.path));
     const dropContent = dropRecords.length
-      ? dropRecords.map(record => {
-        const drops = record.data.drops;
-        const entries = Array.isArray(drops.entries) ? drops.entries : [];
-        const rows = entries.map(drop => {
-          const itemId = String(drop.item || 'Unknown item');
-          const imagePath = typeof localSprite === 'function' ? localSprite(itemId) : '';
-          const details = [
-            drop.quantityRange ? `Quantity: ${drop.quantityRange}` : null,
-            drop.itemCount !== undefined ? `Count: ${drop.itemCount}` : null
-          ].filter(Boolean).join(' · ');
-          const percent = Number(drop.percentage);
-          const hasPercent = drop.percentage !== undefined && Number.isFinite(percent);
-          const chance = hasPercent ? `<strong class="pack-drop-percent">${percent.toFixed(1)}%</strong>` : '';
-          const chanceBar = hasPercent ? `<div class="chance-track pack-drop-chance"><i style="width:${Math.max(0, Math.min(100, percent))}%"></i></div>` : '';
-          return `<div class="pack-drop-entry"><div class="pack-drop-row"><div class="pack-drop-item">${imagePath ? `<img class="pack-drop-icon" src="${safePokemonName(imagePath)}" alt="" title="${safePokemonName(itemId)}" onerror="this.hidden=true">` : ''}<b>${safePokemonName(itemId)}</b></div><div class="pack-drop-meta">${details ? `<span>${safePokemonName(details)}</span>` : ''}${chance}</div></div>${chanceBar}</div>`;
-        }).join('');
-        return `<article class="pack-drop-card"><header><div><h4>${safePokemonName(record.data.target || label)}</h4><small>${safePokemonName(record.path)}</small></div>${drops.amount !== undefined ? `<span class="pack-drop-amount">${safePokemonName(drops.amount)} roll${Number(drops.amount) === 1 ? '' : 's'}</span>` : ''}</header>${rows || '<p>No individual drops are listed.</p>'}</article>`;
-      }).join('')
+      ? dropRecords.map(record => renderDropEditor(record, label, packEditMode.drops)).join('')
       : '<div class="pack-detail-empty">No drop data was found in the matching species files.</div>';
     const moveGroups = speciesRecords.flatMap(record => {
       const groups = [];
       if (Array.isArray(record.data?.moves) && record.data.moves.length) groups.push({ name: record.data.name || label, path: record.path, moves: record.data.moves });
       (Array.isArray(record.data?.forms) ? record.data.forms : []).forEach(form => {
-        if (Array.isArray(form.moves) && form.moves.length) groups.push({ name: `${record.data.name || label} — ${form.name || 'Form'}`, path: record.path, moves: form.moves });
+        if (Array.isArray(form.moves) && form.moves.length) groups.push({ name: `${record.data.name || label} â€” ${form.name || 'Form'}`, path: record.path, moves: form.moves });
       });
       return groups;
     });
@@ -504,20 +851,20 @@ async function showPokemonSpawns(texturePath, row) {
     const rawJson = rawFiles.length
       ? `<section class="pack-raw-json"><h3>Raw JSON</h3>${rawFiles.map(([path, raw]) => `<details><summary>${safePokemonName(path)}</summary><pre>${safePokemonName(raw)}</pre></details>`).join('')}</section>`
       : '';
-    details.innerHTML = `${heading}${pokemonContent}<section class="pack-spawn-section"><h3>Spawn data</h3>${spawnContent}</section><section class="pack-drop-data"><h3>Drop data</h3><div class="pack-drop-list">${dropContent}</div></section><section class="pack-moves-data"><h3>Moves</h3><div class="pack-moves-list">${movesContent}</div></section>${rawJson}`;
+    details.innerHTML = `${heading}${pokemonContent}<section class="pack-spawn-section"><div class="pack-edit-section-heading"><h3>Spawn data</h3>${activePackFile ? `<button class="button small" type="button" data-pack-action="toggle-spawn-edit">${packEditMode.spawn ? 'Done' : 'Edit spawns'}</button>` : ''}</div>${spawnContent}</section><section class="pack-drop-data"><div class="pack-edit-section-heading"><h3>Drop data</h3>${editableDropRecords.length ? `<button class="button small" type="button" data-pack-action="toggle-drop-edit">${packEditMode.drops ? 'Done' : 'Edit drops'}</button>` : ''}</div><div class="pack-drop-list">${dropContent}</div></section><section class="pack-moves-data"><h3>Moves</h3><div class="pack-moves-list">${movesContent}</div></section>${rawJson}`;
   } catch (error) {
     if (version !== packSelectionVersion) return;
-    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${matchingEntries.map(entry => safePokemonName(entry.path)).join('<br>')}</small></div><div class="pack-detail-empty error">${safePokemonName(error instanceof Error ? error.message : 'Could not read this spawn JSON.')}</div>`;
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÃ‰MON SPAWN DATA</span><h2>${safePokemonName(label)}</h2><small>${matchingEntries.map(entry => safePokemonName(entry.path)).join('<br>')}</small></div><div class="pack-detail-empty error">${safePokemonName(error instanceof Error ? error.message : 'Could not read this spawn JSON.')}</div>`;
   }
 }
 
-// Draw the discovered Pokémon names in the pack sidebar.
+// Draw the discovered PokÃ©mon names in the pack sidebar.
 function renderPokemonPackList(paths) {
   const list = $('#packPokemonList');
   $('#packPokemonCount').dataset.total = String(paths.length);
   $('#packPokemonCount').textContent = paths.length.toLocaleString();
   if (!paths.length) {
-    list.innerHTML = '<div class="pack-empty-list">No Pokémon PNGs were found in <code>assets/cobblemon/textures/pokemon</code>.</div>';
+    list.innerHTML = '<div class="pack-empty-list">No PokÃ©mon PNGs were found in <code>assets/cobblemon/textures/pokemon</code>.</div>';
     return;
   }
   list.innerHTML = paths.map(path => {
@@ -545,7 +892,7 @@ function renderBasePokemonList() {
   filterPackPokemonList('packBasePokemonSearch', 'packBasePokemonList', 'packBasePokemonCount');
 }
 
-// Filter one sidebar list by display name, resource name, or Pokédex number.
+// Filter one sidebar list by display name, resource name, or PokÃ©dex number.
 function filterPackPokemonList(searchId, listId, countId) {
   const query = $(`#${searchId}`).value.trim().toLowerCase();
   const rows = $$(`#${listId} .pack-pokemon-row, #${listId} .pack-base-pokemon-row`);
@@ -560,6 +907,185 @@ function filterPackPokemonList(searchId, listId, countId) {
   count.textContent = query ? `${visible}/${total}` : total.toLocaleString();
 }
 
+// Apply changes from editable drop fields directly to the selected pack file draft.
+function updatePackDropField(input) {
+  const document = packEditDocuments.get(input.dataset.packFile);
+  if (!document) return;
+  const drops = document.drops || (document.drops = { amount: 1, entries: [] });
+  drops.entries ||= [];
+  if (input.hasAttribute('data-drop-amount')) {
+    drops.amount = input.value === '' ? '' : Number(input.value);
+  } else {
+    const index = Number(input.dataset.dropIndex);
+    const drop = drops.entries[index];
+    if (!drop) return;
+    const field = input.dataset.dropField;
+    if (field === 'item') {
+      if (drop.item && typeof drop.item === 'object') drop.item.id = input.value;
+      else drop.item = input.value;
+      const preview = input.closest('.pack-drop-edit-item')?.querySelector('[data-drop-preview]');
+      const image = input.value ? localSprite(input.value) : '';
+      if (preview) { preview.src = image; preview.hidden = !image; }
+    } else if (input.value === '') {
+      delete drop[field];
+    } else if (input.dataset.dropKind === 'json') {
+      try { drop[field] = JSON.parse(input.value); } catch { return; }
+    } else if (input.type === 'number') {
+      drop[field] = input.value === '' ? '' : Number(input.value);
+    } else drop[field] = input.value;
+  }
+  dirtyPackFiles.add(input.dataset.packFile);
+  updatePackEditStatus();
+}
+
+// Update one root spawn field or one nested condition without replacing the whole source document.
+function updatePackSpawnField(input) {
+  const document = packEditDocuments.get(input.dataset.packFile);
+  const spawnIndex = Number(input.dataset.spawnIndex);
+  if (!document) return;
+  const spawnList = Array.isArray(document) ? document : Array.isArray(document.spawns) ? document.spawns : [];
+  const spawn = spawnList[spawnIndex];
+  if (!spawn) return;
+  const kind = input.dataset.spawnKind;
+  let value;
+  if (kind === 'boolean') value = input.checked;
+  else if (kind === 'array') value = input.value.split(',').map(part => part.trim()).filter(Boolean);
+  else if (kind === 'array-item') {
+    const path = JSON.parse(input.dataset.conditionPath);
+    const values = getNestedSpawnValue(spawn, path);
+    if (!Array.isArray(values)) return;
+    values[Number(input.dataset.conditionArrayIndex)] = input.value;
+    value = values;
+  }
+  else if (kind === 'number') value = input.value === '' ? undefined : Number(input.value);
+  else value = input.value;
+  const path = input.dataset.conditionPath ? JSON.parse(input.dataset.conditionPath) : [input.dataset.spawnField];
+  if (kind !== 'array-item') setNestedSpawnValue(spawn, path, value, value === undefined || (Array.isArray(value) && !value.length) || value === '');
+  dirtyPackFiles.add(input.dataset.packFile);
+  updatePackEditStatus();
+}
+
+function getNestedSpawnValue(target, path) {
+  return path.reduce((value, key) => value?.[key], target);
+}
+
+// Set or remove a nested property such as condition.biomes on a spawn draft.
+function setNestedSpawnValue(target, path, value, remove = false) {
+  let cursor = target;
+  path.slice(0, -1).forEach(key => {
+    if (!cursor[key] || typeof cursor[key] !== 'object') cursor[key] = {};
+    cursor = cursor[key];
+  });
+  if (remove) delete cursor[path[path.length - 1]];
+  else cursor[path[path.length - 1]] = value;
+}
+
+// Return a spawn array while preserving whether the source file uses a root array or a spawns property.
+function getEditableSpawnList(document) {
+  if (Array.isArray(document)) return document;
+  if (!Array.isArray(document.spawns)) document.spawns = [];
+  return document.spawns;
+}
+
+// Re-render the open PokÃ©mon after a drop is added, removed, or a JSON file is applied.
+function refreshPackEditorSelection() {
+  const selected = $$('.pack-pokemon-row.active, .pack-base-pokemon-row.active')[0];
+  if (selected) selected.click();
+  else if (activePackView === 'spawns') showPackSpawns();
+}
+
+$('#packPokemonDetails').addEventListener('input', event => {
+  if (event.target.matches('[data-pack-file][data-drop-field], [data-drop-amount]')) updatePackDropField(event.target);
+  if (event.target.matches('[data-pack-file][data-spawn-field], [data-condition-path]')) updatePackSpawnField(event.target);
+});
+
+$('#packPokemonDetails').addEventListener('change', event => {
+  if (event.target.matches('[data-drop-field][data-drop-kind="json"]')) updatePackDropField(event.target);
+  if (event.target.matches('[data-pack-file][data-spawn-field], [data-condition-path]')) updatePackSpawnField(event.target);
+});
+
+$('#packPokemonDetails').addEventListener('click', event => {
+  const biomePickerButton = event.target.closest('[data-pack-spawn-biome-picker]');
+  if (biomePickerButton) {
+    const target = biomePickerButton.parentElement.querySelector('input[type="hidden"]');
+    if (target) openSpawnBiomePicker(target);
+    return;
+  }
+  const action = event.target.closest('[data-pack-action]');
+  if (!action) return;
+  const file = action.dataset.packFile;
+  if (action.dataset.packAction === 'toggle-spawn-edit') {
+    packEditMode.spawn = !packEditMode.spawn;
+    if (packEditMode.spawn && activePackFile && !hasMatchingSpawnFileForPokemon(activePackPokemonId)) ensureSpawnFileForPokemon(activePackPokemonId);
+    refreshPackEditorSelection();
+    return;
+  }
+  if (action.dataset.packAction === 'toggle-drop-edit') {
+    packEditMode.drops = !packEditMode.drops;
+    refreshPackEditorSelection();
+    return;
+  }
+  const document = packEditDocuments.get(file);
+  if (!document) return;
+  if (action.dataset.packAction === 'pick-drop-item') {
+    const field = action.closest('.pack-drop-edit-item')?.querySelector('[data-drop-field="item"]');
+    if (field) openItemPicker(id => { field.value = id; field.dispatchEvent(new Event('input', { bubbles: true })); }, field.value);
+  } else if (action.dataset.packAction === 'add-drop') {
+    const drops = document.drops || (document.drops = { amount: 1, entries: [] });
+    drops.entries ||= [];
+    drops.entries.push({ item: 'minecraft:diamond', quantityRange: '1' });
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'remove-drop') {
+    document.drops.entries.splice(Number(action.dataset.dropIndex), 1);
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'add-spawn') {
+    const spawnList = getEditableSpawnList(document);
+    const pokemon = (action.dataset.pokemonId || '').toLowerCase() || 'pokemon';
+    spawnList.push({ id: `${pokemon}-${spawnList.length + 1}`, pokemon, bucket: 'common', weight: 1, level: '1-10', spawnablePositionType: 'grounded', presets: ['natural'], type: 'pokemon', condition: { biomes: ['#cobblemon:is_overworld'] } });
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'remove-spawn') {
+    getEditableSpawnList(document).splice(Number(action.dataset.spawnIndex), 1);
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'remove-condition') {
+    setNestedSpawnValue(getEditableSpawnList(document)[Number(action.dataset.spawnIndex)], JSON.parse(action.dataset.conditionPath), undefined, true);
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'add-biome-value' || action.dataset.packAction === 'remove-biome-value') {
+    const spawn = getEditableSpawnList(document)[Number(action.dataset.spawnIndex)];
+    const path = JSON.parse(action.dataset.conditionPath);
+    let values = getNestedSpawnValue(spawn, path);
+    if (!Array.isArray(values)) {
+      setNestedSpawnValue(spawn, path, []);
+      values = getNestedSpawnValue(spawn, path);
+    }
+    if (action.dataset.packAction === 'add-biome-value') values.push('minecraft:plains');
+    else values.splice(Number(action.dataset.conditionArrayIndex), 1);
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  } else if (action.dataset.packAction === 'add-condition') {
+    const card = action.closest('.pack-spawn-edit-card');
+    const key = card?.querySelector('[data-new-condition-key]')?.value.trim();
+    const rawValue = card?.querySelector('[data-new-condition-value]')?.value.trim();
+    if (!key || !rawValue) return;
+    const value = rawValue.includes(',') ? rawValue.split(',').map(part => part.trim()).filter(Boolean) : rawValue === 'true' ? true : rawValue === 'false' ? false : rawValue !== '' && Number.isFinite(Number(rawValue)) ? Number(rawValue) : rawValue;
+    const group = card.querySelector('[data-new-condition-group]').value;
+    setNestedSpawnValue(getEditableSpawnList(document)[Number(action.dataset.spawnIndex)], [group, ...key.split('.').filter(Boolean)], value);
+    dirtyPackFiles.add(file);
+    updatePackEditStatus();
+    refreshPackEditorSelection();
+  }
+});
+
 // Let either long sidebar list collapse without changing the other section.
 function wirePackSidebarCollapse(buttonId, listId, sectionName) {
   const button = $(`#${buttonId}`);
@@ -572,37 +1098,68 @@ function wirePackSidebarCollapse(buttonId, listId, sectionName) {
   });
 }
 
-wirePackSidebarCollapse('togglePackPokemonList', 'packPokemonList', 'Pokémon in pack');
-wirePackSidebarCollapse('togglePackBasePokemonList', 'packBasePokemonList', 'Pokémon in base');
+wirePackSidebarCollapse('togglePackPokemonList', 'packPokemonList', 'PokÃ©mon in pack');
+wirePackSidebarCollapse('togglePackBasePokemonList', 'packBasePokemonList', 'PokÃ©mon in base');
 $('#packPokemonSearch').addEventListener('input', () => filterPackPokemonList('packPokemonSearch', 'packPokemonList', 'packPokemonCount'));
 $('#packBasePokemonSearch').addEventListener('input', () => filterPackPokemonList('packBasePokemonSearch', 'packBasePokemonList', 'packBasePokemonCount'));
+$('#closeSpawnBiomePicker').addEventListener('click', () => $('#spawnBiomeDialog').close());
+$('#spawnBiomeSearch').addEventListener('input', renderSpawnBiomeGrid);
+$$('[data-spawn-biome-category]').forEach(button => button.addEventListener('click', () => {
+  spawnBiomePickerCategory = button.dataset.spawnBiomeCategory;
+  $$('[data-spawn-biome-category]').forEach(category => category.classList.toggle('active', category === button));
+  renderSpawnBiomeGrid();
+}));
 renderBasePokemonList();
+if (window.location.protocol === 'file:') {
+  $('#packUploadStatus').textContent = 'Local file mode blocks Cobblemon data fetches. Run Start Local Server.bat, then open http://127.0.0.1:8000.';
+}
 
 $('#packSpawnsButton').addEventListener('click', showPackSpawns);
+
+// Keep provenance labels attached to the PokÃ©mon heading after each detail render.
+new MutationObserver(() => {
+  const heading = $('#packPokemonDetails .pack-detail-heading');
+  if (heading && activePackProvenanceHtml && !heading.querySelector('.pack-detail-provenance')) {
+    heading.insertAdjacentHTML('beforeend', `<div class="pack-detail-provenance">${activePackProvenanceHtml}</div>`);
+  }
+  $$('#packPokemonDetails .spawn-source').forEach(source => {
+    if (source.previousElementSibling?.classList.contains('pack-source-badge')) return;
+    source.insertAdjacentHTML('beforebegin', spawnSourceBadge(source.textContent.trim()));
+  });
+}).observe($('#packPokemonDetails'), { childList: true });
 
 // Handle a local JAR selection and report what the pack contains.
 $('#packJarInput').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (dirtyPackFiles.size && !window.confirm('Loading another pack will discard the edits held in this session. Continue?')) {
+    event.target.value = '';
+    return;
+  }
   packSelectionVersion++;
   const status = $('#packUploadStatus');
-  status.textContent = `Reading ${file.name}…`;
+  status.textContent = `Reading ${file.name}â€¦`;
   status.classList.remove('error');
   try {
     if (!file.name.toLowerCase().endsWith('.jar')) throw new Error('Choose a .jar file.');
     const entries = await readJarEntries(file);
     activePackFile = file;
     activePackEntries = new Map(entries.map(entry => [entry.lowerPath, entry]));
+    packEnglishStringsPromise = null;
+    packEditDocuments.clear();
+    dirtyPackFiles.clear();
+    newPackFiles.clear();
     activePackSpawnGroups = null;
+    updatePackEditStatus();
     const paths = collapsePokemonTextureVariants(entries
       .filter(entry => entry.lowerPath.startsWith(POKEMON_TEXTURE_PREFIX) && entry.lowerPath.endsWith('.png'))
       .map(entry => entry.path.slice(POKEMON_TEXTURE_PREFIX.length))
     );
     renderPokemonPackList(paths);
     if (activePackView === 'spawns') showPackSpawns();
-    else $('#packPokemonDetails').innerHTML = '<div class="pack-detail-empty">Select a Pokémon from the sidebar to view its spawn data.</div>';
+    else $('#packPokemonDetails').innerHTML = '<div class="pack-detail-empty">Select a PokÃ©mon from the sidebar to view its spawn data.</div>';
     status.textContent = paths.length
-      ? `${paths.length.toLocaleString()} Pokémon texture files found in ${file.name}`
+      ? `${paths.length.toLocaleString()} PokÃ©mon texture files found in ${file.name}`
       : `No matching textures found in ${file.name}`;
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : 'Could not read this JAR.';
