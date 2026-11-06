@@ -366,9 +366,9 @@ async function checkPackJsonFiles() {
   if (!activePackFile || button.disabled) return;
   button.disabled = true;
   const originalLabel = button.innerHTML;
-  button.textContent = 'Checking…';
+  button.textContent = 'Checking...';
   const status = $('#packUploadStatus');
-  status.textContent = 'Checking datapack JSON…';
+  status.textContent = 'Checking datapack JSON...';
   status.classList.remove('error');
   const isJsonDocument = entry => /\.json$/i.test(entry.path) || /(?:^|\/)pack\.mcmeta$/i.test(entry.path);
   const jsonEntries = [...activePackArchiveEntries.filter(isJsonDocument), ...[...activePackEntries.values()].filter(entry => entry.virtual && isJsonDocument(entry))];
@@ -386,13 +386,21 @@ async function checkPackJsonFiles() {
       errors.push(`${entry.path}: ${error instanceof Error ? error.message : 'Invalid JSON.'}`);
     }
   }
+  const details = $('#packPokemonDetails');
   if (errors.length) {
     status.textContent = `JSON check found ${errors.length} invalid file${errors.length === 1 ? '' : 's'}.`;
     status.classList.add('error');
-    window.alert(`JSON check found ${errors.length} invalid file${errors.length === 1 ? '' : 's'}:\n\n${errors.join('\n')}`);
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">DATAPACK VALIDATION</span><h2>JSON check found ${errors.length} problem${errors.length === 1 ? '' : 's'}</h2><small>Review the file paths and parser messages below, then check again after fixing them.</small></div><section class="pack-json-results error"><h3>Files that need attention</h3><ul class="pack-json-error-list">${errors.map(error => {
+      const separator = error.indexOf(': ');
+      const path = separator < 0 ? error : error.slice(0, separator);
+      const message = separator < 0 ? 'Invalid JSON.' : error.slice(separator + 2);
+      return `<li><code>${safePokemonName(path)}</code><span>${safePokemonName(message)}</span></li>`;
+    }).join('')}</ul><div class="pack-json-fixes"><h3>Things to check</h3><ul><li>Put double quotes around property names and text values.</li><li>Check that each property or array entry is separated by a comma.</li><li>Remove trailing commas and make sure braces and brackets are paired.</li><li>Use the parser message above to locate the exact file and syntax problem.</li></ul></div></section>`;
   } else {
-    status.textContent = `JSON check passed · ${jsonEntries.length} file${jsonEntries.length === 1 ? '' : 's'} valid`;
+    status.textContent = `JSON check passed - ${jsonEntries.length} file${jsonEntries.length === 1 ? '' : 's'} valid`;
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">DATAPACK VALIDATION</span><h2>All JSON files are valid</h2><small>Checked ${jsonEntries.length} JSON document${jsonEntries.length === 1 ? '' : 's'}, including pack.mcmeta and unsaved editor changes.</small></div><section class="pack-json-results success"><h3>Syntax check passed</h3><p>Every checked file can be parsed as JSON. This check confirms JSON syntax; it does not verify that each Cobblemon field or value is supported by the mod.</p></section>`;
   }
+  details.scrollIntoView({ behavior: 'smooth', block: 'start' });
   button.disabled = false;
   button.innerHTML = originalLabel;
 }
@@ -1011,7 +1019,7 @@ async function loadPackSpawnGroups() {
     const biomePresets = collectConditionBiomes(spawn.condition).filter(name => aetherPresetSet.has(name) || biomePresetSet.has(name));
     [...new Set([...presetNames.map(String), ...biomePresets])].forEach(preset => {
       if (!groups.has(preset)) groups.set(preset, { name: preset, entries: [], sources: [] });
-      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown Pokémon'), weight: Number(spawn.weight) || 0, bucket: spawn.bucket || defaultBucket, level: spawn.level, timeRange: spawn.condition?.timeRange, path, source });
+      groups.get(preset).entries.push({ pokemon: String(spawn.pokemon || 'Unknown Pokémon'), weight: Number(spawn.weight) || 0, bucket: spawn.bucket || defaultBucket, level: spawn.level ?? spawn.levelRange, timeRange: spawn.condition?.timeRange, path, source });
     });
   };
   const spawnFiles = [...activePackEntries.values()].filter(entry => /(?:^|\/)spawn_pool_world\/(?:.*\/)?[^/]+\.json$/.test(entry.lowerPath));
@@ -1179,7 +1187,10 @@ function renderSpawnPresetEntries(entries, timeIndex = 0) {
     const bucket = ['ultra-rare', 'rare', 'uncommon', 'common'].includes(rawBucket) ? rawBucket : rawBucket || 'other';
     if (!rarityGroups.has(bucket)) rarityGroups.set(bucket, new Map());
     const totals = rarityGroups.get(bucket);
-    totals.set(entry.pokemon, (totals.get(entry.pokemon) || 0) + Math.max(0, entry.weight));
+    if (!totals.has(entry.pokemon)) totals.set(entry.pokemon, { weight: 0, levels: new Set() });
+    const pokemonTotals = totals.get(entry.pokemon);
+    pokemonTotals.weight += Math.max(0, entry.weight);
+    if (entry.level !== undefined && entry.level !== null && entry.level !== '') pokemonTotals.levels.add(String(entry.level));
   });
   const rarityOrder = ['ultra-rare', 'rare', 'uncommon', 'common'];
   const orderedRarities = [...rarityGroups.entries()].sort((left, right) => {
@@ -1189,11 +1200,13 @@ function renderSpawnPresetEntries(entries, timeIndex = 0) {
   });
   return orderedRarities.length
     ? orderedRarities.map(([rarity, totals]) => {
-      const totalWeight = [...totals.values()].reduce((sum, weight) => sum + weight, 0);
-      const rows = [...totals.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
-      return `<section class="pack-rarity-group"><header><h4>${safePokemonName(titleCasePokemon(rarity))}</h4><small>${rows.length} Pokémon</small></header><div class="pack-preset-pokemon-list">${rows.map(([pokemon, weight]) => {
-        const percent = totalWeight ? weight / totalWeight * 100 : 0;
-        return `<div class="pack-preset-pokemon">${renderPokemonSprite(pokemon, 'pack-preset-pokemon-avatar')}<div class="pack-preset-pokemon-content"><div class="pack-preset-pokemon-head"><b>${safePokemonName(titleCasePokemon(pokemon))}</b><strong>${percent.toFixed(1)}%</strong></div><div class="chance-track"><i style="width:${percent}%"></i></div></div></div>`;
+      const totalWeight = [...totals.values()].reduce((sum, data) => sum + data.weight, 0);
+      const rows = [...totals.entries()].sort((left, right) => right[1].weight - left[1].weight || left[0].localeCompare(right[0]));
+      return `<section class="pack-rarity-group"><header><h4>${safePokemonName(titleCasePokemon(rarity))}</h4><small>${rows.length} Pokémon</small></header><div class="pack-preset-pokemon-list">${rows.map(([pokemon, data]) => {
+        const percent = totalWeight ? data.weight / totalWeight * 100 : 0;
+        const levels = [...data.levels].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+        const levelLabel = levels.length ? `Level${levels.length > 1 ? ' ranges' : ' range'}: ${levels.join(', ')}` : 'Level range not specified';
+        return `<div class="pack-preset-pokemon">${renderPokemonSprite(pokemon, 'pack-preset-pokemon-avatar')}<div class="pack-preset-pokemon-content"><div class="pack-preset-pokemon-head"><b>${safePokemonName(titleCasePokemon(pokemon))}</b><strong>${percent.toFixed(1)}%</strong></div><small class="pack-preset-level-range">${safePokemonName(levelLabel)}</small><div class="chance-track"><i style="width:${percent}%"></i></div></div></div>`;
       }).join('')}</div></section>`;
     }).join('')
     : `<div class="pack-detail-empty">${timeIndex ? `No Pokémon spawn entries are listed for ${safePokemonName(SPAWN_TIME_FILTERS[timeIndex].toLowerCase())}.` : 'No Pokémon spawn entries are listed for this preset.'}</div>`;

@@ -110,6 +110,21 @@
 .pack-detail-empty{max-width:760px;padding:14px;border:1px dashed var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:10px;line-height:1.55}
 .pack-detail-empty code{color:var(--green);font:9px var(--mono);overflow-wrap:anywhere}
 .pack-detail-empty.error{color:var(--red)}
+.pack-json-results{max-width:900px;margin-top:16px;padding:18px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text)}
+.pack-json-results.success{border-color:#557d4a;box-shadow:0 0 18px #8db59612}
+.pack-json-results.error{border-color:#944a42;box-shadow:0 0 18px #e46b5412}
+.pack-json-results h3{margin:0 0 10px;font:600 13px var(--display)}
+.pack-json-results.success>h3{color:#a9db8c}
+.pack-json-results.error>h3{color:#ff9a83}
+.pack-json-results p,.pack-json-fixes li{color:var(--muted);font-size:11px;line-height:1.6}
+.pack-json-error-list,.pack-json-fixes ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.pack-json-error-list li{display:grid;gap:5px;padding:10px;border:1px solid #6a3935;border-radius:6px;background:#291e1c}
+.pack-json-error-list code{color:#ffb5a2;font:10px/1.5 var(--mono);overflow-wrap:anywhere}
+.pack-json-error-list span{color:#d8c3bd;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.pack-json-fixes{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.pack-json-fixes h3{margin-bottom:8px}
+.pack-json-fixes ul{padding-left:17px;list-style:disc}
+.pack-json-fixes li{padding-left:2px}
 .pack-spawn-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));align-items:start;gap:11px}
 .pack-spawn-browser-tabs{position:sticky;top:0;z-index:2;display:flex;gap:7px;margin:-2px 0 12px;padding:5px 0;background:var(--bg)}
 .pack-spawn-browser-tabs button{padding:7px 11px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);font:650 9px var(--sans);cursor:pointer;transition:color .15s,border-color .15s,background .15s}
@@ -301,6 +316,7 @@
 .pack-preset-pokemon-head{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
 .pack-preset-pokemon-head b{min-width:0;color:var(--text);font-size:10px;overflow-wrap:anywhere}
 .pack-preset-pokemon-head strong{color:#c4ed69;font:600 10px var(--mono)}
+.pack-preset-level-range{color:var(--muted);font:8px/1.4 var(--mono);overflow-wrap:anywhere}
 .pack-preset-pokemon .chance-track{width:100%;margin:0}
 .pack-rarity-group{padding:10px 10px 0}
 .pack-rarity-group+ .pack-rarity-group{margin-top:6px;border-top:1px solid var(--line)}
