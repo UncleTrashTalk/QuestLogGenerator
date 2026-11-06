@@ -1,6 +1,6 @@
-﻿/*
+/*
  * Cobblemon pack intake.
- * Reads the JAR ZIP directory locally and lists Pokémon texture files without
+ * Reads the ZIP directory locally and lists Pokémon texture files without
  * extracting or uploading the archive.
  */
 const POKEMON_TEXTURE_PREFIX = 'assets/cobblemon/textures/pokemon/';
@@ -105,9 +105,9 @@ function toSafeZipNumber(value, description) {
   return Number(value);
 }
 
-// Read only the ZIP central directory so large JARs do not need to load into memory.
+// Read only the ZIP central directory so large ZIPs do not need to load into memory.
 async function readJarCentralDirectory(file) {
-  if (file.size < 22) throw new Error('This file is too small to be a valid JAR.');
+  if (file.size < 22) throw new Error('This file is too small to be a valid ZIP.');
   const tailStart = Math.max(0, file.size - (22 + 0xffff + 20));
   const tailBuffer = await file.slice(tailStart).arrayBuffer();
   const tail = new DataView(tailBuffer);
@@ -121,7 +121,7 @@ async function readJarCentralDirectory(file) {
       }
     }
   }
-  if (endOffset < 0) throw new Error('Could not find a ZIP directory in this JAR.');
+  if (endOffset < 0) throw new Error('Could not find a ZIP directory in this ZIP.');
 
   const endAbsolute = tailStart + endOffset;
   let entryCount = tail.getUint16(endOffset + 10, true);
@@ -130,23 +130,23 @@ async function readJarCentralDirectory(file) {
   const isZip64 = entryCount === 0xffff || directorySize === 0xffffffff || directoryOffset === 0xffffffff;
 
   if (isZip64) {
-    if (endAbsolute < 20) throw new Error('The JAR has an incomplete ZIP64 directory.');
+    if (endAbsolute < 20) throw new Error('The ZIP has an incomplete ZIP64 directory.');
     const locatorView = new DataView(await file.slice(endAbsolute - 20, endAbsolute).arrayBuffer());
-    if (locatorView.getUint32(0, true) !== ZIP64_LOCATOR_SIGNATURE) throw new Error('The JAR has an invalid ZIP64 directory.');
+    if (locatorView.getUint32(0, true) !== ZIP64_LOCATOR_SIGNATURE) throw new Error('The ZIP has an invalid ZIP64 directory.');
     const recordOffset = toSafeZipNumber(locatorView.getBigUint64(8, true), 'ZIP64 directory');
     const zip64View = new DataView(await file.slice(recordOffset, recordOffset + 56).arrayBuffer());
-    if (zip64View.byteLength < 56 || zip64View.getUint32(0, true) !== ZIP64_END_SIGNATURE) throw new Error('The JAR has an incomplete ZIP64 directory.');
-    entryCount = toSafeZipNumber(zip64View.getBigUint64(32, true), 'JAR entry count');
-    directorySize = toSafeZipNumber(zip64View.getBigUint64(40, true), 'JAR directory size');
-    directoryOffset = toSafeZipNumber(zip64View.getBigUint64(48, true), 'JAR directory offset');
+    if (zip64View.byteLength < 56 || zip64View.getUint32(0, true) !== ZIP64_END_SIGNATURE) throw new Error('The ZIP has an incomplete ZIP64 directory.');
+    entryCount = toSafeZipNumber(zip64View.getBigUint64(32, true), 'ZIP entry count');
+    directorySize = toSafeZipNumber(zip64View.getBigUint64(40, true), 'ZIP directory size');
+    directoryOffset = toSafeZipNumber(zip64View.getBigUint64(48, true), 'ZIP directory offset');
   }
 
-  if (directoryOffset + directorySize > file.size) throw new Error('The JAR directory points outside the file.');
+  if (directoryOffset + directorySize > file.size) throw new Error('The ZIP directory points outside the file.');
   const directory = await file.slice(directoryOffset, directoryOffset + directorySize).arrayBuffer();
   return { view: new DataView(directory), bytes: new Uint8Array(directory), entryCount };
 }
 
-// Read metadata for each JAR entry, including ZIP64 sizes and local offsets.
+// Read metadata for each ZIP entry, including ZIP64 sizes and local offsets.
 async function readJarEntries(file) {
   const { view, bytes, entryCount } = await readJarCentralDirectory(file);
   const decoder = new TextDecoder('utf-8');
@@ -155,7 +155,7 @@ async function readJarEntries(file) {
 
   for (let index = 0; index < entryCount; index++) {
     if (offset + 46 > view.byteLength || view.getUint32(offset, true) !== ZIP_CENTRAL_SIGNATURE) {
-      throw new Error('The JAR has a damaged ZIP directory.');
+      throw new Error('The ZIP has a damaged ZIP directory.');
     }
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
@@ -163,7 +163,7 @@ async function readJarEntries(file) {
     const nameStart = offset + 46;
     const extraStart = nameStart + nameLength;
     const nextOffset = nameStart + nameLength + extraLength + commentLength;
-    if (nextOffset > view.byteLength) throw new Error('The JAR has a truncated ZIP directory.');
+    if (nextOffset > view.byteLength) throw new Error('The ZIP has a truncated ZIP directory.');
 
     const nameBytes = bytes.subarray(nameStart, nameStart + nameLength);
     const path = decoder.decode(nameBytes).replace(/\\/g, '/');
@@ -190,14 +190,14 @@ async function readJarEntries(file) {
           foundZip64 = true;
           let valueOffset = dataStart;
           if (uncompressedSize === 0xffffffff) {
-            uncompressedSize = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'JAR entry size');
+            uncompressedSize = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'ZIP entry size');
             valueOffset += 8;
           }
           if (compressedSize === 0xffffffff) {
-            compressedSize = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'Compressed JAR entry size');
+            compressedSize = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'Compressed ZIP entry size');
             valueOffset += 8;
           }
-          if (localOffset === 0xffffffff) localOffset = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'JAR entry offset');
+          if (localOffset === 0xffffffff) localOffset = toSafeZipNumber(view.getBigUint64(valueOffset, true), 'ZIP entry offset');
           break;
         }
         extraOffset = fieldEnd;
@@ -221,10 +221,10 @@ function calculateZipCrc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-// Create a ZIP central-directory record for a copied or newly edited JAR file.
+// Create a ZIP central-directory record for a copied or newly edited ZIP file.
 function createZipCentralRecord(entry, nameBytes, flags, compression, crc, compressedSize, uncompressedSize, localOffset) {
   if (nameBytes.length > 0xffff || localOffset > 0xffffffff || compressedSize > 0xffffffff || uncompressedSize > 0xffffffff) {
-    throw new Error('This pack is too large for the browser JAR writer (ZIP64 output is not supported yet).');
+    throw new Error('This pack is too large for the browser ZIP writer (ZIP64 output is not supported yet).');
   }
   const record = new Uint8Array(46 + nameBytes.length);
   const view = new DataView(record.buffer);
@@ -249,9 +249,9 @@ function createZipCentralRecord(entry, nameBytes, flags, compression, crc, compr
   return record;
 }
 
-// Rebuild the JAR while copying untouched compressed payloads and replacing edited JSON files.
+// Rebuild the ZIP while copying untouched compressed payloads and replacing edited JSON files.
 async function buildEditedPackJar() {
-  if (!activePackFile) throw new Error('Upload a JAR before downloading the pack.');
+  if (!activePackFile) throw new Error('Upload a ZIP before downloading the pack.');
   if (!dirtyPackFiles.size) return activePackFile;
 
   const replacements = new Map();
@@ -268,7 +268,7 @@ async function buildEditedPackJar() {
   const signatureFile = path => /^META-INF\/(?:.*\/)?(?:[^/]+\.(?:SF|RSA|DSA|EC)|SIG-[^/]+)$/i.test(path);
   const originalEntries = activePackArchiveEntries.filter(entry => !replacements.has(entry.lowerPath) && !signatureFile(entry.path));
   const outputEntries = [...originalEntries, ...replacements.values()];
-  if (outputEntries.length > 0xffff) throw new Error('This pack contains too many files for the browser JAR writer (ZIP64 output is not supported yet).');
+  if (outputEntries.length > 0xffff) throw new Error('This pack contains too many files for the browser ZIP writer (ZIP64 output is not supported yet).');
 
   const localParts = [];
   const centralParts = [];
@@ -289,14 +289,14 @@ async function buildEditedPackJar() {
       compressedSize = payload.length;
       uncompressedSize = payload.length;
     } else {
-      if (entry.flags & 1) throw new Error(`The encrypted JAR entry ${entry.path} cannot be copied.`);
+      if (entry.flags & 1) throw new Error(`The encrypted ZIP entry ${entry.path} cannot be copied.`);
       const localHeader = new DataView(await activePackFile.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
-      if (localHeader.byteLength < 30 || localHeader.getUint32(0, true) !== ZIP_LOCAL_SIGNATURE) throw new Error(`The JAR entry ${entry.path} has an invalid local header.`);
+      if (localHeader.byteLength < 30 || localHeader.getUint32(0, true) !== ZIP_LOCAL_SIGNATURE) throw new Error(`The ZIP entry ${entry.path} has an invalid local header.`);
       const dataStart = entry.localOffset + 30 + localHeader.getUint16(26, true) + localHeader.getUint16(28, true);
       payload = activePackFile.slice(dataStart, dataStart + entry.compressedSize);
     }
     if (nameBytes.length > 0xffff || compressedSize > 0xffffffff || uncompressedSize > 0xffffffff || localOffset > 0xffffffff) {
-      throw new Error('This pack is too large for the browser JAR writer (ZIP64 output is not supported yet).');
+      throw new Error('This pack is too large for the browser ZIP writer (ZIP64 output is not supported yet).');
     }
     const localRecord = new Uint8Array(30 + nameBytes.length);
     const localView = new DataView(localRecord.buffer);
@@ -319,7 +319,7 @@ async function buildEditedPackJar() {
 
   const centralOffset = localOffset;
   const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-  if (centralOffset > 0xffffffff || centralSize > 0xffffffff) throw new Error('This pack is too large for the browser JAR writer (ZIP64 output is not supported yet).');
+  if (centralOffset > 0xffffffff || centralSize > 0xffffffff) throw new Error('This pack is too large for the browser ZIP writer (ZIP64 output is not supported yet).');
   const endRecord = new Uint8Array(22);
   const endView = new DataView(endRecord.buffer);
   endView.setUint32(0, ZIP_END_SIGNATURE, true);
@@ -328,10 +328,10 @@ async function buildEditedPackJar() {
   endView.setUint32(12, centralSize, true);
   endView.setUint32(16, centralOffset, true);
   endView.setUint16(20, 0, true);
-  return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/java-archive' });
+  return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
 }
 
-// Download the currently uploaded JAR with any edited and new JSON files included.
+// Download the currently uploaded ZIP with any edited and new JSON files included.
 async function downloadEditedPackJar() {
   const button = $('#downloadPackJar');
   if (!activePackFile || button.disabled) return;
@@ -340,7 +340,7 @@ async function downloadEditedPackJar() {
   button.textContent = 'Preparing…';
   try {
     const blob = await buildEditedPackJar();
-    const filename = `${activePackFile.name.replace(/\.jar$/i, '')}-edited.jar`;
+    const filename = `${activePackFile.name.replace(/\.zip$/i, '')}-edited.zip`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -352,7 +352,7 @@ async function downloadEditedPackJar() {
     $('#packUploadStatus').textContent = `Downloaded ${filename}`;
     $('#packUploadStatus').classList.remove('error');
   } catch (error) {
-    $('#packUploadStatus').textContent = error instanceof Error ? error.message : 'Could not build the edited JAR.';
+    $('#packUploadStatus').textContent = error instanceof Error ? error.message : 'Could not build the edited ZIP.';
     $('#packUploadStatus').classList.add('error');
   } finally {
     button.disabled = false;
@@ -360,7 +360,44 @@ async function downloadEditedPackJar() {
   }
 }
 
-// Build a blank 1.21.1 Cobblemon datapack JAR with its expected folder layout.
+// Parse every JSON document in the active datapack, using unsaved drafts for edited files.
+async function checkPackJsonFiles() {
+  const button = $('#checkPackJson');
+  if (!activePackFile || button.disabled) return;
+  button.disabled = true;
+  const originalLabel = button.innerHTML;
+  button.textContent = 'Checking…';
+  const status = $('#packUploadStatus');
+  status.textContent = 'Checking datapack JSON…';
+  status.classList.remove('error');
+  const isJsonDocument = entry => /\.json$/i.test(entry.path) || /(?:^|\/)pack\.mcmeta$/i.test(entry.path);
+  const jsonEntries = [...activePackArchiveEntries.filter(isJsonDocument), ...[...activePackEntries.values()].filter(entry => entry.virtual && isJsonDocument(entry))];
+  const errors = [];
+  for (const entry of jsonEntries) {
+    try {
+      if (packEditDocuments.has(entry.lowerPath)) {
+        const text = JSON.stringify(packEditDocuments.get(entry.lowerPath));
+        if (typeof text !== 'string') throw new Error('File cannot be serialized as JSON.');
+        JSON.parse(text);
+      } else {
+        await readJarJson(activePackFile, entry);
+      }
+    } catch (error) {
+      errors.push(`${entry.path}: ${error instanceof Error ? error.message : 'Invalid JSON.'}`);
+    }
+  }
+  if (errors.length) {
+    status.textContent = `JSON check found ${errors.length} invalid file${errors.length === 1 ? '' : 's'}.`;
+    status.classList.add('error');
+    window.alert(`JSON check found ${errors.length} invalid file${errors.length === 1 ? '' : 's'}:\n\n${errors.join('\n')}`);
+  } else {
+    status.textContent = `JSON check passed · ${jsonEntries.length} file${jsonEntries.length === 1 ? '' : 's'} valid`;
+  }
+  button.disabled = false;
+  button.innerHTML = originalLabel;
+}
+
+// Build a blank 1.21.1 Cobblemon datapack ZIP with its expected folder layout.
 function buildEmptyCobblemonPackJar() {
   const encoder = new TextEncoder();
   const files = [
@@ -409,10 +446,10 @@ function buildEmptyCobblemonPackJar() {
   endView.setUint16(10, files.length, true);
   endView.setUint32(12, centralSize, true);
   endView.setUint32(16, centralOffset, true);
-  return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/java-archive' });
+  return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
 }
 
-// Load a JAR into the editor and initialize the same pack state as a file upload.
+// Load a ZIP into the editor and initialize the same pack state as a file upload.
 async function loadPackArchive(file) {
   packSelectionVersion++;
   const entries = await readJarEntries(file);
@@ -421,6 +458,7 @@ async function loadPackArchive(file) {
   activePackEntries = new Map(entries.map(entry => [entry.lowerPath, entry]));
   packDropLookupPromise = null;
   $('#downloadPackJar').hidden = false;
+  $('#checkPackJson').hidden = false;
   packEnglishStringsPromise = null;
   packEditDocuments.clear();
   dirtyPackFiles.clear();
@@ -449,7 +487,7 @@ async function createEmptyCobblemonPack() {
   status.textContent = 'Creating empty Cobblemon pack…';
   status.classList.remove('error');
   try {
-    const file = new File([buildEmptyCobblemonPackJar()], 'cobblemon-datapack-template.jar', { type: 'application/java-archive' });
+    const file = new File([buildEmptyCobblemonPackJar()], 'cobblemon-datapack-template.zip', { type: 'application/zip' });
     await loadPackArchive(file);
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : 'Could not create the empty Cobblemon pack.';
@@ -591,7 +629,7 @@ async function resolvePokemonPokedexRows(speciesRecords) {
   return rows;
 }
 
-// Read English Cobblemon translations from every matching language folder in the uploaded JAR.
+// Read English Cobblemon translations from every matching language folder in the uploaded ZIP.
 async function loadPackEnglishStrings() {
   if (!packEnglishStringsPromise) packEnglishStringsPromise = (async () => {
     const entries = [...activePackEntries.values()]
@@ -621,7 +659,7 @@ async function loadPackEnglishStrings() {
   return packEnglishStringsPromise;
 }
 
-// Inflate one JSON file from the selected JAR entry and parse it locally.
+// Inflate one JSON file from the selected ZIP entry and parse it locally.
 async function readJarJson(file, entry) {
   const headerBuffer = await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer();
   const header = new DataView(headerBuffer);
@@ -633,7 +671,7 @@ async function readJarJson(file, entry) {
   let jsonBytes;
   if (entry.compression === 0) jsonBytes = compressed;
   else if (entry.compression === 8) {
-    if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot decompress JAR files.');
+    if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot decompress ZIP files.');
     const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
     jsonBytes = await new Response(stream).arrayBuffer();
   } else throw new Error(`The spawn JSON uses unsupported ZIP compression (${entry.compression}).`);
@@ -841,7 +879,7 @@ function renderPackBiomePicker(value, conditionPath, spawnIndex, packFile, array
   const label = spawnBiomeTagLabel(value);
   const kind = arrayIndex === null ? 'biome' : 'array-item';
   const arrayAttribute = arrayIndex === null ? '' : `data-condition-array-index="${arrayIndex}"`;
-  return `<div class="repeat-item-id-control biome-id-control pack-spawn-biome-picker"><img class="biome-preview" src="${safePokemonName(localSprite(icon))}" alt=""><input type="hidden" value="${safePokemonName(value)}" data-spawn-index="${spawnIndex}" data-condition-path="${conditionPath}" data-spawn-kind="${kind}" ${arrayAttribute} data-pack-file="${safePokemonName(packFile)}"><button type="button" class="biome-picker-trigger" data-pack-spawn-biome-picker aria-haspopup="dialog"><span class="biome-selected-label"><b>${safePokemonName(label)}</b><small>${safePokemonName(value)}</small></span><i aria-hidden="true">⌄</i></button></div>`;
+  return `<div class="repeat-item-id-control biome-id-control pack-spawn-biome-picker"><img class="biome-preview" src="${safePokemonName(localSprite(icon))}" alt=""><input type="hidden" value="${safePokemonName(value)}" data-spawn-index="${spawnIndex}" data-condition-path="${conditionPath}" data-spawn-kind="${kind}" ${arrayAttribute} data-pack-file="${safePokemonName(packFile)}"><button type="button" class="biome-picker-trigger" data-pack-spawn-biome-picker aria-haspopup="dialog"><span class="biome-selected-label"><b>${safePokemonName(label)}</b><small>${safePokemonName(value)}</small></span><i aria-hidden="true">?</i></button></div>`;
 }
 
 function spawnBiomeTagLabel(tag) {
@@ -1412,7 +1450,7 @@ async function showPokemonSpawns(texturePath, row) {
   }).sort((left, right) => left.lowerPath.localeCompare(right.lowerPath));
   if (!baseSpecies && !matchingEntries.length && !additionEntries.length && !speciesEntries.length && !activePackFile) {
     if (version !== packSelectionVersion) return;
-    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">No matching spawn or species-addition JSON was found in this JAR.</div>`;
+    details.innerHTML = `<div class="pack-detail-heading"><span class="eyebrow">POKÉMON DATA</span><h2>${safePokemonName(label)}</h2><small>${safePokemonName(texturePath)}</small></div><div class="pack-detail-empty">No matching spawn or species-addition JSON was found in this ZIP.</div>`;
     return;
   }
   try {
@@ -1542,7 +1580,7 @@ async function showPokemonSpawns(texturePath, row) {
       const groups = [];
       if (Array.isArray(record.data?.moves) && record.data.moves.length) groups.push({ name: record.data.name || label, path: record.path, moves: record.data.moves });
       (Array.isArray(record.data?.forms) ? record.data.forms : []).forEach(form => {
-        if (Array.isArray(form.moves) && form.moves.length) groups.push({ name: `${record.data.name || label} — ${form.name || 'Form'}`, path: record.path, moves: form.moves });
+        if (Array.isArray(form.moves) && form.moves.length) groups.push({ name: `${record.data.name || label} · ${form.name || 'Form'}`, path: record.path, moves: form.moves });
       });
       return groups;
     });
@@ -2012,6 +2050,7 @@ if (window.location.protocol === 'file:') {
 $('#packSpawnsButton').addEventListener('click', showPackSpawns);
 $('#packDropsButton').addEventListener('click', showPackDrops);
 $('#downloadPackJar').addEventListener('click', downloadEditedPackJar);
+$('#checkPackJson').addEventListener('click', checkPackJsonFiles);
 $('#createEmptyPackJar').addEventListener('click', createEmptyCobblemonPack);
 
 // Keep provenance labels attached to the Pokémon heading after each detail render.
@@ -2026,7 +2065,7 @@ new MutationObserver(() => {
   });
 }).observe($('#packPokemonDetails'), { childList: true });
 
-// Handle a local JAR selection and report what the pack contains.
+// Handle a local ZIP selection and report what the pack contains.
 $('#packJarInput').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -2038,10 +2077,10 @@ $('#packJarInput').addEventListener('change', async event => {
   status.textContent = `Reading ${file.name}…`;
   status.classList.remove('error');
   try {
-    if (!file.name.toLowerCase().endsWith('.jar')) throw new Error('Choose a .jar file.');
+    if (!file.name.toLowerCase().endsWith('.zip')) throw new Error('Choose a .zip datapack.');
     await loadPackArchive(file);
   } catch (error) {
-    status.textContent = error instanceof Error ? error.message : 'Could not read this JAR.';
+    status.textContent = error instanceof Error ? error.message : 'Could not read this ZIP datapack.';
     status.classList.add('error');
   } finally {
     event.target.value = '';

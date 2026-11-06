@@ -31,6 +31,8 @@
 .pack-editor-active .pack-upload-button.pack-editor-upload-action{display:inline-flex}
 .pack-download-button.pack-editor-upload-action{display:none}
 .pack-editor-active .pack-download-button.pack-editor-upload-action:not([hidden]){display:inline-flex}
+.pack-json-check-button.pack-editor-upload-action{display:none}
+.pack-editor-active .pack-json-check-button.pack-editor-upload-action:not([hidden]){display:inline-flex}
 .pack-template-button.pack-editor-upload-action{display:none}
 .pack-editor-active .pack-template-button.pack-editor-upload-action{display:inline-flex}
 .pack-download-button[disabled]{opacity:.65;cursor:wait}
